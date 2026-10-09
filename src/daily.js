@@ -41,32 +41,42 @@ function mouse(doc, type, init) {
   }
 }
 
+// The same date, or the same previous date, as the point read before: the tooltip didn't move on.
+const repeats = (point, before, key) => point[key].date === before[key].date || point[key].previousDate === before[key].previousDate;
+
 // Moves a synthetic mouse across the chart, point by point, and reads the tooltip each time. Returns
-// null if the chart's data changes during the sweep, or if `abort()` turns true (checked after each
-// frame, before the point is read), so the caller can decide whether to run it again.
+// null if the chart's data changes during the sweep, if Google's tooltip didn't update for a point, if a
+// drawn metric got no number at any point (a tooltip it can't read), or if `abort()` turns true (checked
+// after each frame, before the point is read), so the caller can decide whether to run it again.
 export async function sweep(chart, lang, { frame = nextFrame, abort = () => false } = {}) {
   const { host, svg, plotX, plotY, xs, drawn } = chart;
   const doc = host.ownerDocument;
   const before = signature(svg);
-  const rect = svg.getBoundingClientRect();
-  const clientY = rect.top + plotY + 20;
   host.classList.add('scpc-sweeping');
   const points = [];
+  let read = null; // the last point read
   try {
     for (const x of xs) {
+      // Where the chart is now: the page can scroll or move during the sweep.
+      const rect = svg.getBoundingClientRect();
       const clientX = rect.left + plotX + x;
+      const clientY = rect.top + plotY + 20;
       const hit = doc.elementFromPoint?.(clientX, clientY);
       const target = hit && host.contains(hit) ? hit : svg;
       target.dispatchEvent(mouse(doc, 'mousemove', { bubbles: true, clientX, clientY }));
       await frame();
       if (abort()) return null;
       if (signature(svg) !== before) return null;
-      points.push(readPoint(liveLines(host), drawn, lang));
+      const point = readPoint(liveLines(host), drawn, lang);
+      if (point && read && repeats(point, read, drawn[0])) return null;
+      read = point ?? read;
+      points.push(point);
     }
   } finally {
     svg.dispatchEvent(mouse(doc, 'mouseout', { bubbles: true }));
     svg.dispatchEvent(mouse(doc, 'mouseleave', {}));
     host.classList.remove('scpc-sweeping');
   }
-  return points;
+  const usable = key => points.some(p => Number.isFinite(p?.[key].last) && Number.isFinite(p?.[key].previous));
+  return drawn.every(usable) ? points : null;
 }

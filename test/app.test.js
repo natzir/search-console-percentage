@@ -197,6 +197,44 @@ describe('start, fixes', () => {
     expect(document.querySelector('[data-scpc="strip"]')).toBeNull();
     expect(document.querySelectorAll('[data-scpc="pill"]').length).toBe(12);
   });
+
+  it('gives up, and removes the strip, when Google\'s tooltip is reworded and can\'t be read', async () => {
+    const { host, svg } = buildPage();
+    svg.addEventListener('mousemove', () => {
+      host.querySelector('[aria-live] > span').innerHTML = '<div>Clicks on Thu, Sep 10, 2026: 10</div><div>Clicks on Thu, Aug 13, 2026: 2</div>';
+    });
+    let n = 0;
+    app = start(document, fakeWin(PERF), { frame: async () => { n++; }, delay: 0, settle: 0, patience: 15 });
+    await wait(150);
+    expect(n).toBeGreaterThan(0);
+    expect(n).toBeLessThanOrEqual(9); // three sweeps of three points, at most
+    expect(document.querySelector('[data-scpc="strip"]')).toBeNull();
+    const stable = n;
+    document.body.append(document.createElement('div'));
+    await wait(50);
+    expect(n).toBe(stable);
+    expect(document.querySelector('[data-scpc="strip"]')).toBeNull();
+    expect(document.querySelectorAll('[data-scpc="pill"]').length).toBe(12);
+  });
+
+  it('does not walk the page again when Google writes its chart tooltip', async () => {
+    const { host } = buildPage();
+    app = start(document, fakeWin(PERF), { frame: now, delay: 0, settle: 0, patience: 15 });
+    await wait(50);
+    const walks = vi.spyOn(document, 'querySelectorAll');
+    const tableWalks = () => walks.mock.calls.filter(([selector]) => selector === 'table').length;
+    try {
+      host.querySelector('[aria-live] > span').innerHTML = '<div>Day 2</div><div>. Clicks: Thu, Sep 10, 2026 : 10 ,</div>';
+      host.querySelector('[aria-live]').append(document.createElement('div'));
+      await wait(30);
+      expect(tableWalks()).toBe(0);
+      document.body.append(document.createElement('div'));
+      await wait(30);
+      expect(tableWalks()).toBeGreaterThan(0);
+    } finally {
+      walks.mockRestore();
+    }
+  });
 });
 
 describe('start, cache and loading', () => {

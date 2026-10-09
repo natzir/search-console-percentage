@@ -75,6 +75,40 @@ describe('sweep', () => {
     expect(host.classList.contains('scpc-sweeping')).toBe(false);
   });
 
+  it('reads each point where the chart is now, when the page moves during the sweep', async () => {
+    const { svg } = buildPage();
+    let left = 0;
+    svg.getBoundingClientRect = () => ({ left, top: 0, right: left + 751, bottom: 212, width: 751, height: 212, x: left, y: 0 });
+    const points = await sweep(findChart(document), 'en', { frame: async () => { left += 40; } });
+    expect(points?.map(p => p.CLICKS.date)).toEqual(DAYS.map(d => d.date));
+  });
+
+  it('gives up when Google\'s tooltip did not update for a point', async () => {
+    const { host } = buildPage();
+    let moves = 0;
+    // The second mousemove never reaches the chart: its tooltip still shows the first point.
+    host.addEventListener('mousemove', event => { if (++moves === 2) event.stopImmediatePropagation(); }, true);
+    expect(await sweep(findChart(document), 'en', { frame: now })).toBeNull();
+    expect(moves).toBe(2);
+  });
+
+  it('gives up when the tooltip is written in a way it can\'t read', async () => {
+    const { host, svg } = buildPage();
+    svg.addEventListener('mousemove', () => {
+      host.querySelector('[aria-live] > span').innerHTML = '<div>Clicks on Thu, Sep 10, 2026: 10</div><div>Clicks on Thu, Aug 13, 2026: 2</div>';
+    });
+    expect(await sweep(findChart(document), 'en', { frame: now })).toBeNull();
+  });
+
+  it('gives up when a drawn metric has no number at any point', async () => {
+    const { host, svg } = buildPage();
+    svg.addEventListener('mousemove', () => {
+      const lines = [...host.querySelectorAll('[aria-live] div')].filter(el => el.textContent.startsWith('. Impressions'));
+      for (const line of lines) line.textContent = line.textContent.replace(/: [\d,]+ ,$/, ': — ,');
+    });
+    expect(await sweep(findChart(document), 'en', { frame: now })).toBeNull();
+  });
+
   it('reads the lines of the live region only', () => {
     const { host } = buildPage();
     host.querySelector('[aria-live] > span').innerHTML = '<div>Chart, containing counts…</div><div>Day 2</div><div>. Clicks: Thu, Sep 10, 2026 : 10 ,</div>';

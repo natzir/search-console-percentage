@@ -9,6 +9,9 @@ import { renderLoading, renderStrip } from './strip.js';
 
 const PERFORMANCE = /\/search-console\/performance\//;
 const ours = node => node.nodeType === 1 && (node.hasAttribute('data-scpc') || node.closest?.('[data-scpc]'));
+// The chart's tooltip text, which Google rewrites as the pointer moves over the chart: nothing to redraw
+// for it (the sweep reads it directly, and the wait for the pointer to leave listens to mouseleave).
+const tooltip = node => Boolean(node.closest?.('[aria-live]')?.closest('[role="application"]'));
 
 export function start(doc, win, { storage, frame, delay = 200, settle = 400, patience = 5000 } = {}) {
   let enabled = true;
@@ -212,7 +215,7 @@ export function start(doc, win, { storage, frame, delay = 200, settle = 400, pat
 
   const observer = new MutationObserver(records => {
     const relevant = records.some(r =>
-      !ours(r.target) && ([...r.addedNodes, ...r.removedNodes].some(n => !ours(n)) || r.type === 'attributes'));
+      !ours(r.target) && !tooltip(r.target) && ([...r.addedNodes, ...r.removedNodes].some(n => !ours(n)) || r.type === 'attributes'));
     if (relevant) schedule();
   });
   observer.observe(doc.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['d', 'data-numeric-value', 'title', 'stroke'] });

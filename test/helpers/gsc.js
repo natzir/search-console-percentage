@@ -88,11 +88,12 @@ export function buildPage({ lang = EN, metrics = ORDER, drawn = ['CLICKS', 'IMPR
 
   for (const el of doc.querySelectorAll('[data-guidedhelpid], table, [role="application"]')) visible(el);
 
-  // Google's tooltip: the nearest point's values for every drawn metric, both periods.
+  // Google's tooltip: the nearest point's values for every drawn metric, both periods. Like Google's, it
+  // finds the point from where the SVG is on screen now.
   const host = doc.querySelector('[role="application"]');
   const svg = host.querySelector('svg');
   svg.addEventListener('mousemove', event => {
-    const x = event.clientX - 26;
+    const x = event.clientX - svg.getBoundingClientRect().left - 26;
     const i = xs.reduce((best, v, j) => (Math.abs(v - x) < Math.abs(xs[best] - x) ? j : best), 0);
     const day = days[i];
     const out = [`<div>Day ${i + 1}</div>`];
