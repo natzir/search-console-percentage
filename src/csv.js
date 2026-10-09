@@ -1,16 +1,22 @@
 // The comparison table as CSV: every row the page holds (not only the visible page of the table), the
 // exact numbers from data-numeric-value, Google's own headers, and a % change after each Difference.
+// Excel opens a CSV with its own language's separators: in languages that write decimals with a comma
+// (es, fr, de…) it expects semicolons between columns and decimal commas, so the CSV follows the page.
 import { change, status } from './change.js';
 import { agrees, numeric } from './detect.js';
+import { separators } from './numbers.js';
 
-const field = value => (/[",\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value);
+const field = (value, sep) => (value.includes(sep) || /["\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value);
 const headerName = th => (th.getAttribute('data-name') ?? th.textContent).replace(/\s+/g, ' ').trim();
 const metricName = th => (th.getAttribute('data-name') ?? th.textContent).split('\n')[0].trim();
 // A text cell that starts like a formula would be run as one by Excel and Sheets: a query "+500 euros"
 // or "=HYPERLINK(...)" gets a leading apostrophe, which the spreadsheet hides.
 const safeText = text => (/^[=+\-@\t\r]/.test(text) ? `'${text}` : text);
 
-export function tableCsv({ table, metrics }) {
+export function tableCsv({ table, metrics }, lang = 'en') {
+  const comma = separators(lang).decimal === ',';
+  const sep = comma ? ';' : ',';
+  const decimal = text => (comma ? text.replace('.', ',') : text);
   const head = [...table.tHead.rows[0].cells];
   const byDiff = new Map(metrics.map(m => [m.cols[2], m]));
   const header = [];
@@ -23,7 +29,7 @@ export function tableCsv({ table, metrics }) {
     [...row.cells].forEach((cell, i) => {
       if (cell.hasAttribute('data-column-toggle-label')) {
         const value = numeric(cell);
-        out.push(Number.isNaN(value) ? '' : String(value));
+        out.push(Number.isNaN(value) ? '' : decimal(String(value)));
       } else {
         out.push(safeText(cell.textContent.replace(/\s+/g, ' ').trim()));
       }
@@ -34,13 +40,13 @@ export function tableCsv({ table, metrics }) {
           out.push('');
         } else {
           const c = change(metric.key, last, previous);
-          out.push(status(c) ?? (c.pct ?? 0).toFixed(2));
+          out.push(status(c) ?? decimal((c.pct ?? 0).toFixed(2)));
         }
       }
     });
     return out;
   });
-  return `﻿${[header, ...rows].map(r => r.map(field).join(',')).join('\r\n')}\r\n`;
+  return `﻿${[header, ...rows].map(r => r.map(value => field(value, sep)).join(sep)).join('\r\n')}\r\n`;
 }
 
 // search-analytics-query-2026-10-09.csv: the report's path after /performance/, the tab, the day.

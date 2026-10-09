@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { start } from '../src/app.js';
-import { buildPage, DAYS } from './helpers/gsc.js';
+import { buildPage, DAYS, ES } from './helpers/gsc.js';
 
 const PERF = 'https://search.google.com/search-console/performance/search-analytics?resource_id=x&compare_date=PREV';
 const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -70,6 +70,24 @@ describe('start', () => {
     select.dispatchEvent(new Event('change'));
     await wait(5);
     expect(storage.data.metric).toBe('CLICKS');
+  });
+
+  it('exports the CSV in the page\'s language', async () => {
+    buildPage({ lang: ES });
+    const saved = [URL.createObjectURL, URL.revokeObjectURL];
+    const blobs = [];
+    URL.createObjectURL = blob => { blobs.push(blob); return 'blob:csv'; };
+    URL.revokeObjectURL = () => {};
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    try {
+      app = start(document, fakeWin(PERF), { frame: now, delay: 0, settle: 0, patience: 15 });
+      await wait(20);
+      document.querySelector('[data-scpc="toolbar"] button').click();
+      expect((await blobs[0].text()).split('\r\n')[1]).toMatch(/^blue widgets;30;28;2;7,14;/);
+    } finally {
+      click.mockRestore();
+      [URL.createObjectURL, URL.revokeObjectURL] = saved;
+    }
   });
 
   it('waits for the person to stop hovering the chart before it reads the days', async () => {

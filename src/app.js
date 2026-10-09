@@ -36,7 +36,7 @@ export function start(doc, win, { storage, frame, delay = 200, settle = 400, pat
 
   const exportCsv = () => {
     const model = findTable(doc);
-    if (model) download(doc, tableCsv(model), fileName(new URL(win.location.href)));
+    if (model) download(doc, tableCsv(model, lang()), fileName(new URL(win.location.href)));
   };
 
   const stripOf = chart => chart.host.parentElement?.parentElement?.querySelector(':scope > [data-scpc="strip"]');

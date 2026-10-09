@@ -18,11 +18,33 @@ describe('tableCsv', () => {
     expect(lines[3]).toBe('"widget ""pro""",0,0,0,0.00,12,12,0,0.00');
   });
 
-  it('keeps Google\'s Spanish headers and machine-readable numbers', () => {
+  it('follows a language that writes decimals with a comma: semicolons and decimal commas, as Excel expects there', () => {
+    buildPage({ lang: ES, metrics: ['CLICKS', 'POSITION'] });
+    const lines = tableCsv(findTable(document), 'es').split('\r\n');
+    expect(lines[0]).toBe('﻿Consultas principales;Clics Últimos 28 días;Clics 28 días anteriores;Clics Diferencia;Clics % change;Posición Últimos 28 días;Posición 28 días anteriores;Posición Diferencia;Posición % change');
+    expect(lines[1]).toBe('blue widgets;30;28;2;7,14;1,1;3,5;-2,4;-68,57');
+    expect(lines[2]).toBe('red widgets, cheap;3;0;3;new;9,7;8,9;0,8;8,99');
+    expect(lines[3]).toBe('"widget ""pro""";0;0;0;0,00;12;12;0;0,00');
+    expect(lines[4]).toBe('');
+  });
+
+  it('keeps Google\'s Spanish headers, and writes numbers without thousands separators', () => {
     buildPage({ lang: ES, metrics: ['IMPRESSIONS'] });
-    const lines = tableCsv(findTable(document)).split('\r\n');
-    expect(lines[0]).toBe('﻿Consultas principales,Impresiones Últimos 28 días,Impresiones 28 días anteriores,Impresiones Diferencia,Impresiones % change');
-    expect(lines[3]).toBe('"widget ""pro""",1423,2792,-1369,-49.03');
+    const lines = tableCsv(findTable(document), 'es').split('\r\n');
+    expect(lines[0]).toBe('﻿Consultas principales;Impresiones Últimos 28 días;Impresiones 28 días anteriores;Impresiones Diferencia;Impresiones % change');
+    expect(lines[3]).toBe('"widget ""pro""";1423;2792;-1369;-49,03');
+  });
+
+  it('quotes a field that holds the separator in use, and only then', () => {
+    const rows = [{ dim: 'widgets; cheap', CLICKS: [1, 2] }, { dim: '=1;2', CLICKS: [1, 1] }];
+    buildPage({ lang: ES, metrics: ['CLICKS'], rows });
+    let lines = tableCsv(findTable(document), 'es').split('\r\n');
+    expect(lines[1]).toBe('"widgets; cheap";1;2;-1;-50,00');
+    expect(lines[2]).toBe(`"'=1;2";1;1;0;0,00`);
+    document.body.innerHTML = '';
+    buildPage({ metrics: ['CLICKS'], rows });
+    lines = tableCsv(findTable(document), 'en').split('\r\n');
+    expect(lines[1]).toBe('widgets; cheap,1,2,-1,-50.00');
   });
 
   it('keeps spreadsheets from reading a query as a formula, but not the numbers', () => {
