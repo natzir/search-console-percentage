@@ -1,6 +1,15 @@
 // Numbers as Search Console writes them in the page's language, and as the extension writes them back.
 
-const format = (lang, options) => new Intl.NumberFormat(lang || 'en', options);
+// A <html lang> Intl doesn't accept ("en_US") would throw: such a page is read and written in English.
+const format = (lang, options) => {
+  try {
+    return new Intl.NumberFormat(lang || 'en', options);
+  } catch {
+    return new Intl.NumberFormat('en', options);
+  }
+};
+// Marks that right-to-left languages put around numbers and signs ("0.7\u200E%\u200E" in Arabic).
+const BIDI = /[\u200E\u200F\u061C]/g;
 
 // The group and decimal separators of the language Search Console set on <html lang>.
 export function separators(lang) {
@@ -14,7 +23,7 @@ export function separators(lang) {
 // "35,005" (en), "35.005" and "0,7 %" (es), "1 423" (fr) → 35005, 35005, 0.7, 1423. NaN for words.
 export function parseNumber(text, lang) {
   const { group, decimal } = separators(lang);
-  let s = String(text ?? '').replace(/[\s%]/g, '').replace(/−/g, '-');
+  let s = String(text ?? '').replace(BIDI, '').replace(/[\s%]/g, '').replace(/−/g, '-');
   if (!/\s/.test(group)) s = s.split(group).join('');
   s = s.split(decimal).join('.');
   return /^[+-]?\d+(\.\d+)?$/.test(s) ? Number(s) : NaN;

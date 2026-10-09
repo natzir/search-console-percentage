@@ -25,9 +25,10 @@ export function findTable(doc) {
   return null;
 }
 
-const numeric = cell => {
+// A cell's exact number; NaN when it has none (Number would read a blank one as 0).
+export const numeric = cell => {
   const value = cell?.getAttribute('data-numeric-value');
-  return value == null || value === '' ? NaN : Number(value);
+  return value == null || value.trim() === '' ? NaN : Number(value);
 };
 
 export function readRows({ table, metrics }) {

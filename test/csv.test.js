@@ -45,6 +45,12 @@ describe('tableCsv', () => {
     document.querySelector('tbody tr').cells[2].removeAttribute('data-numeric-value');
     expect(tableCsv(findTable(document)).split('\r\n')[1]).toBe('blue widgets,30,,2,');
   });
+
+  it('leaves a blank number empty instead of writing 0', () => {
+    buildPage({ metrics: ['CLICKS'] });
+    document.querySelector('tbody tr').cells[2].setAttribute('data-numeric-value', ' ');
+    expect(tableCsv(findTable(document)).split('\r\n')[1]).toBe('blue widgets,30,,2,');
+  });
 });
 
 describe('fileName', () => {

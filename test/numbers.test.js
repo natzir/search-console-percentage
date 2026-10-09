@@ -31,6 +31,22 @@ describe('parseNumber', () => {
     expect(parseNumber('28 días anteriores', 'es')).toBeNaN();
     expect(parseNumber('', 'en')).toBeNaN();
   });
+
+  it('ignores the bidi marks right-to-left languages put around numbers', () => {
+    expect(parseNumber('0.7‎%‎', 'ar')).toBe(0.7);
+    expect(parseNumber('‏1,423‏', 'he')).toBe(1423);
+    expect(parseNumber('؜-764', 'ar')).toBe(-764);
+  });
+});
+
+describe('an invalid page language', () => {
+  it('falls back to English instead of throwing', () => {
+    expect(separators('en_US')).toEqual({ group: ',', decimal: '.' });
+    expect(parseNumber('35,005', 'en_US')).toBe(35005);
+    expect(formatPercent(7.142857, 'en_US')).toBe('+7.1%');
+    expect(formatDifference('CTR', 0.4, 'en_US')).toBe('+0.4 pp');
+    expect(formatValue('CTR', 0.7, 'en_US')).toBe('0.7%');
+  });
 });
 
 describe('formatPercent', () => {

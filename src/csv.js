@@ -1,6 +1,7 @@
 // The comparison table as CSV: every row the page holds (not only the visible page of the table), the
 // exact numbers from data-numeric-value, Google's own headers, and a % change after each Difference.
 import { change } from './change.js';
+import { numeric } from './detect.js';
 
 const field = value => (/[",\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value);
 const headerName = th => (th.getAttribute('data-name') ?? th.textContent).replace(/\s+/g, ' ').trim();
@@ -8,10 +9,6 @@ const metricName = th => (th.getAttribute('data-name') ?? th.textContent).split(
 // A text cell that starts like a formula would be run as one by Excel and Sheets: a query "+500 euros"
 // or "=HYPERLINK(...)" gets a leading apostrophe, which the spreadsheet hides.
 const safeText = text => (/^[=+\-@\t\r]/.test(text) ? `'${text}` : text);
-const number = cell => {
-  const value = cell?.getAttribute('data-numeric-value');
-  return value == null || value === '' ? NaN : Number(value);
-};
 
 export function tableCsv({ table, metrics }) {
   const head = [...table.tHead.rows[0].cells];
@@ -25,14 +22,14 @@ export function tableCsv({ table, metrics }) {
     const out = [];
     [...row.cells].forEach((cell, i) => {
       if (cell.hasAttribute('data-column-toggle-label')) {
-        const value = number(cell);
+        const value = numeric(cell);
         out.push(Number.isNaN(value) ? '' : String(value));
       } else {
         out.push(safeText(cell.textContent.replace(/\s+/g, ' ').trim()));
       }
       const metric = byDiff.get(i);
       if (metric) {
-        const [last, previous] = metric.cols.slice(0, 2).map(c => number(row.cells[c]));
+        const [last, previous] = metric.cols.slice(0, 2).map(c => numeric(row.cells[c]));
         if (Number.isNaN(last) || Number.isNaN(previous)) {
           out.push('');
         } else {

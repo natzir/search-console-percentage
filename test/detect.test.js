@@ -45,6 +45,13 @@ describe('readRows', () => {
     expect(rows[0].values.POSITION).toEqual([1.1, 3.5]);
     expect(rows[0].diffCells.CLICKS).toBe(document.querySelector('tbody tr').cells[3]);
   });
+
+  it('reads a blank data-numeric-value as NaN, not 0', () => {
+    buildPage();
+    const model = findTable(document);
+    document.querySelector('tbody tr').cells[2].setAttribute('data-numeric-value', '  ');
+    expect(readRows(model)[0].values.CLICKS).toEqual([30, NaN]);
+  });
 });
 
 describe('findCards', () => {
