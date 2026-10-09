@@ -16,7 +16,7 @@ export function tableCsv({ table, metrics }) {
   const header = [];
   head.forEach((th, i) => {
     header.push(headerName(th));
-    if (byDiff.has(i)) header.push(`${metricName(head[byDiff.get(i).cols[0]])} %`);
+    if (byDiff.has(i)) header.push(`${metricName(head[byDiff.get(i).cols[0]])} % change`);
   });
   const rows = [...(table.tBodies[0]?.rows ?? [])].map(row => {
     const out = [];

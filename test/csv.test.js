@@ -9,10 +9,10 @@ afterEach(() => {
 });
 
 describe('tableCsv', () => {
-  it('has every column, exact numbers, and a % after each Difference', () => {
+  it('has every column, exact numbers, and a % change after each Difference', () => {
     buildPage({ metrics: ['CLICKS', 'POSITION'] });
     const lines = tableCsv(findTable(document)).split('\r\n');
-    expect(lines[0]).toBe('﻿Top queries,Clicks Last 28 days,Clicks Previous 28 days,Clicks Difference,Clicks %,Position Last 28 days,Position Previous 28 days,Position Difference,Position %');
+    expect(lines[0]).toBe('﻿Top queries,Clicks Last 28 days,Clicks Previous 28 days,Clicks Difference,Clicks % change,Position Last 28 days,Position Previous 28 days,Position Difference,Position % change');
     expect(lines[1]).toBe('blue widgets,30,28,2,7.14,1.1,3.5,-2.4,-68.57');
     expect(lines[2]).toBe('"red widgets, cheap",3,0,3,new,9.7,8.9,0.8,8.99');
     expect(lines[3]).toBe('"widget ""pro""",0,0,0,0.00,12,12,0,0.00');
@@ -21,7 +21,7 @@ describe('tableCsv', () => {
   it('keeps Google\'s Spanish headers and machine-readable numbers', () => {
     buildPage({ lang: ES, metrics: ['IMPRESSIONS'] });
     const lines = tableCsv(findTable(document)).split('\r\n');
-    expect(lines[0]).toBe('﻿Consultas principales,Impresiones Últimos 28 días,Impresiones 28 días anteriores,Impresiones Diferencia,Impresiones %');
+    expect(lines[0]).toBe('﻿Consultas principales,Impresiones Últimos 28 días,Impresiones 28 días anteriores,Impresiones Diferencia,Impresiones % change');
     expect(lines[3]).toBe('"widget ""pro""",1423,2792,-1369,-49.03');
   });
 
