@@ -42,6 +42,7 @@ export function readRows({ table, metrics }) {
 // page's language. Cards with a single number (not comparing) are left out.
 export function findCards(doc, lang) {
   return [...doc.querySelectorAll('[data-guidedhelpid^="scorecard_"][data-label]')]
+    .filter(isVisible)
     .map(el => {
       const titles = [...el.querySelectorAll('[title]')].map(t => t.getAttribute('title'));
       const numbers = titles.map(t => parseNumber(t, lang)).filter(n => !Number.isNaN(n));
@@ -74,6 +75,7 @@ export const signature = svg => [...svg.querySelectorAll('path[stroke]')].map(p 
 // the cards' order) and whether it compares (dashed lines are the previous period).
 export function findChart(doc) {
   for (const host of doc.querySelectorAll('[role="application"]')) {
+    if (!isVisible(host)) continue; // Google keeps earlier views' charts in the page, hidden
     const svg = host.querySelector('svg');
     const plot = svg?.querySelector(':scope > g[transform]');
     const offset = plot?.getAttribute('transform').match(/translate\(\s*(-?[\d.]+)[\s,]+(-?[\d.]+)/);

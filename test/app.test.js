@@ -364,4 +364,15 @@ describe('start, cache and loading', () => {
     expect(fresh).not.toBe(select);
     expect(document.activeElement).toBe(fresh);
   });
+
+  it('reads the chart on screen, not a hidden earlier one that comes first', async () => {
+    buildPage();
+    const host = document.querySelector('[role="application"]');
+    const old = host.closest('.chart-card').cloneNode(true);
+    old.querySelectorAll('path[stroke]').forEach(p => p.setAttribute('d', 'M1,1L2,2L3,3L4,4L5,5'));
+    document.body.prepend(old);
+    app = start(document, fakeWin(PERF), { frame: now, delay: 0 });
+    await wait(30);
+    expect(tones()).toEqual(['worse', 'better', 'new']);
+  });
 });

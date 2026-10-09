@@ -85,3 +85,28 @@ describe('findChart', () => {
     expect(signature(svg)).toBe(before);
   });
 });
+
+// Search Console keeps the previous view's chart and cards in the page, hidden, before the visible ones.
+function addHiddenOlder() {
+  const host = document.querySelector('[role="application"]');
+  const old = host.closest('.chart-card').cloneNode(true);
+  old.querySelectorAll('path[stroke]').forEach(p => p.setAttribute('d', 'M1,1L2,2L3,3L4,4L5,5'));
+  const cards = document.querySelector('.cards');
+  const oldCards = cards.cloneNode(true);
+  oldCards.querySelectorAll('[title]').forEach(el => el.setAttribute('title', '1'));
+  oldCards.querySelectorAll('[data-guidedhelpid]').forEach(el => el.setAttribute('data-label', 'CTR'));
+  document.body.prepend(old);
+  document.body.prepend(oldCards);
+}
+
+describe('hidden earlier views', () => {
+  it('finds the visible chart and cards, not hidden copies that come first', () => {
+    const { host } = buildPage();
+    const expected = findChart(document).xs;
+    addHiddenOlder();
+    const chart = findChart(document);
+    expect(chart.host).toBe(host);
+    expect(chart.xs).toEqual(expected);
+    expect(findCards(document, 'en').map(c => c.last)).toEqual([248, 35005, 0.7, 14.2]);
+  });
+});
