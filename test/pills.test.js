@@ -69,6 +69,7 @@ describe('annotateCards', () => {
       '▲ +0.4 pp · +133%',
       '▲ +1.0 · +7.6%',
     ]);
+    for (const card of cards) expect(card.el.querySelector('[data-scpc="card-pill"]').parentElement).toBe(card.el.querySelector('[title]').parentElement);
   });
 
   it('turns the pill white on a card filled with its metric colour', () => {

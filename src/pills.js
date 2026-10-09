@@ -43,7 +43,7 @@ export function annotateCards(cards, lang) {
     if (!Number.isFinite(card.last) || !Number.isFinite(card.previous)) continue;
     const c = change(card.key, card.last, card.previous);
     const coloured = onColour(card.el);
-    const target = card.el.querySelector('[role="button"]') ?? card.el;
+    const target = card.el.querySelector('[title]')?.parentElement ?? card.el.querySelector('[role="button"]') ?? card.el;
     place(target, 'card-pill', `${card.last}|${card.previous}|${lang}|${coloured}`, () => {
       const pill = pillElement(card.el.ownerDocument, cardLabel(card.key, c, lang), c.tone, 'card-pill');
       pill.classList.add('scpc-card-pill');

@@ -50,7 +50,7 @@ export function buildPage({ lang = EN, metrics = ORDER, drawn = ['CLICKS', 'IMPR
       ? `<div><div><span title="${show(key, last, lang.lang)}">${show(key, last, lang.lang)}</span></div><div title="${lang.last}">${lang.last}</div></div>` +
         `<div><div><span title="${show(key, prev, lang.lang)}">${show(key, prev, lang.lang)}</span></div><div title="${lang.previous}">${lang.previous}</div></div>`
       : `<div><div><span title="${show(key, last, lang.lang)}">${show(key, last, lang.lang)}</span></div></div>`;
-    return `<div data-guidedhelpid="scorecard_${i}" data-column-index="${i}" data-label="${key}"><div role="button"><div title="${lang.cards[key]}"><span>${lang.cards[key]}</span></div>${periods}</div></div>`;
+    return `<div data-guidedhelpid="scorecard_${i}" data-column-index="${i}" data-label="${key}"><div role="button"><span><span><div><div title="${lang.cards[key]}"><span>${lang.cards[key]}</span></div>${periods}</div></span></span></div></div>`;
   }).join('');
 
   const head = [`<th data-type="string" data-name="${lang.dimension}">${lang.dimension}</th>`];
@@ -75,10 +75,13 @@ export function buildPage({ lang = EN, metrics = ORDER, drawn = ['CLICKS', 'IMPR
   doc.body.innerHTML = `
     <div class="cards">${cards}</div>
     <div class="chart-card"><div class="chart-wrap">
-      <div role="application" class="host">
-        <svg width="751" height="212"><g transform="translate(26,10)"><g class="axis"><text>0</text></g>${lines}</g></svg>
-        <div aria-live="polite"><span></span></div>
-      </div>
+      <div class="chart-block"><div class="chart-row" style="display:flex;flex-direction:row">
+        <div role="application" class="host">
+          <svg width="751" height="212"><g transform="translate(26,10)"><g class="axis"><text>0</text></g>${lines}</g></svg>
+          <div aria-live="polite"><span></span></div>
+        </div>
+        <div class="chart-side"></div>
+      </div></div>
     </div></div>
     <div class="table-card"><div class="table-wrap"><table><thead><tr>${head.join('')}</tr></thead><tbody>${body}</tbody></table></div></div>`;
 

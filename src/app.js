@@ -34,7 +34,7 @@ export function start(doc, win, { storage, frame, delay = 200 } = {}) {
     if (model) download(doc, tableCsv(model), fileName(new URL(win.location.href)));
   };
 
-  const stripOf = chart => chart.host.parentElement?.querySelector(':scope > [data-scpc="strip"]');
+  const stripOf = chart => chart.host.parentElement?.parentElement?.querySelector(':scope > [data-scpc="strip"]');
   const removeStrips = () => doc.querySelectorAll('[data-scpc="strip"]').forEach(el => el.remove());
 
   const paint = (chart, l) => {

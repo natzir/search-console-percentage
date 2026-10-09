@@ -53,8 +53,8 @@ function bars(doc, chart, points, key, labels, lang) {
   const svg = svgEl(doc, 'svg', { width, height: HEIGHT, class: 'scpc-bars' });
   svg.append(
     svgEl(doc, 'line', { x1: chart.plotX, x2: width - PAD, y1: MID, y2: MID, stroke: '#bdc1c6' }),
-    svgText(doc, 0, PAD + 4, formatPercent(CAP, lang)),
-    svgText(doc, 0, HEIGHT - 2, formatPercent(-CAP, lang)),
+    svgText(doc, width - 2, PAD + 4, formatPercent(CAP, lang), 'end'),
+    svgText(doc, width - 2, HEIGHT - 2, formatPercent(-CAP, lang), 'end'),
   );
   const gap = chart.xs.length > 1 ? chart.xs[1] - chart.xs[0] : 20;
   const barWidth = Math.max(1, Math.min(18, gap * 0.64));
@@ -82,13 +82,17 @@ function bars(doc, chart, points, key, labels, lang) {
 }
 
 export function renderStrip(doc, chart, points, { key, labels, lang, onSelect }) {
-  let box = chart.host.parentElement.querySelector(':scope > [data-scpc="strip"]');
+  const wrapper = chart.host.parentElement;
+  let box = wrapper.parentElement.querySelector(':scope > [data-scpc="strip"]');
   if (!box) {
     box = doc.createElement('div');
     box.setAttribute('data-scpc', 'strip');
     box.className = 'scpc-strip';
-    chart.host.after(box);
+    wrapper.after(box);
   }
-  box.replaceChildren(header(doc, chart.drawn, key, labels, onSelect), bars(doc, chart, points, key, labels, lang));
+  const svg = bars(doc, chart, points, key, labels, lang);
+  box.replaceChildren(header(doc, chart.drawn, key, labels, onSelect), svg);
+  // Line the bars up with Google's chart, which may start to the right of the strip's own left edge.
+  svg.style.marginLeft = `${chart.svg.getBoundingClientRect().left - box.getBoundingClientRect().left}px`;
   return box;
 }

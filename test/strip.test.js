@@ -18,10 +18,12 @@ afterEach(() => {
 });
 
 describe('renderStrip', () => {
-  it('draws one bar per point at the chart\'s own x, right after the chart', async () => {
+  it('draws one bar per point at the chart\'s own x, right under the chart\'s wrapper', async () => {
     const { chart, points } = await setup();
     const strip = renderStrip(document, chart, points, { key: 'CLICKS', labels: LABELS, lang: 'en', onSelect() {} });
-    expect(chart.host.nextElementSibling).toBe(strip);
+    expect(strip.parentElement).toBe(chart.host.parentElement.parentElement);
+    expect(strip.previousElementSibling).toBe(chart.host.parentElement);
+    for (const t of [...strip.querySelectorAll('svg > text')].filter(x => x.textContent.includes('100'))) expect(t.getAttribute('text-anchor')).toBe('end');
     const bars = [...strip.querySelectorAll('rect[data-scpc-tone]')];
     expect(bars).toHaveLength(3);
     const centres = bars.map(b => Number(b.getAttribute('x')) + Number(b.getAttribute('width')) / 2);
