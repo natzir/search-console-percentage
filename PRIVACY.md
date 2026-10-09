@@ -10,7 +10,7 @@ Only on Search Console (search.google.com), and only what the Performance report
 
 ## What it keeps
 
-The metric you last chose for the daily strip, in `chrome.storage.local`, in this browser only. A CSV of the table is saved to your computer only when you click *Export with %*.
+The metric you last chose for the change strip, in `chrome.storage.local`, in this browser only. A CSV of the table is saved to your computer only when you click *Export with %*.
 
 ## What it sends
 
@@ -19,7 +19,7 @@ Nothing. The extension makes no network requests.
 ## Permissions
 
 - **Access to search.google.com**: to read the Performance report and add the changes to it.
-- **storage**: to remember the metric chosen for the daily strip.
+- **storage**: to remember the metric chosen for the change strip.
 
 ## Contact
 
