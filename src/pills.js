@@ -1,6 +1,6 @@
 // The pills: the % next to each Difference in the table, and the difference and % in each card.
 import { cardLabel, change, tableLabel } from './change.js';
-import { readRows } from './detect.js';
+import { agrees, numeric, readRows } from './detect.js';
 
 export function pillElement(doc, text, tone, kind = 'pill') {
   const pill = doc.createElement('span');
@@ -24,9 +24,13 @@ export function annotateTable(model, lang) {
   for (const { values, diffCells } of readRows(model)) {
     for (const [key, [last, previous]] of Object.entries(values)) {
       const cell = diffCells[key];
-      if (!cell || Number.isNaN(last) || Number.isNaN(previous)) continue;
-      const c = change(key, last, previous);
+      if (!cell) continue;
       const target = cell.querySelector('span span') ?? cell;
+      if (Number.isNaN(last) || Number.isNaN(previous) || !agrees(key, last, previous, numeric(cell))) {
+        target.querySelector('[data-scpc="pill"]')?.remove();
+        continue;
+      }
+      const c = change(key, last, previous);
       place(target, 'pill', `${last}|${previous}|${lang}`, () => pillElement(cell.ownerDocument, tableLabel(c, lang), c.tone));
     }
   }

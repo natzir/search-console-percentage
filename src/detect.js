@@ -31,6 +31,12 @@ export const numeric = cell => {
   return value == null || value.trim() === '' ? NaN : Number(value);
 };
 
+// Last − previous is the Difference Google shows, give or take its rounding. If not, the columns are not
+// what they seem (Google reordered them) and no % is given. A Difference without a number can't tell.
+const TOLERANCE = { CTR: 0.051, POSITION: 0.051 };
+export const agrees = (key, last, previous, difference) =>
+  Number.isNaN(difference) || Math.abs(last - previous - difference) <= (TOLERANCE[key] ?? 0.5);
+
 export function readRows({ table, metrics }) {
   return [...(table.tBodies[0]?.rows ?? [])].map(row => ({
     row,

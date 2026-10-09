@@ -47,6 +47,14 @@ describe('tableCsv', () => {
     expect(lines[2]).toBe('never,0,0,0,0.00');
   });
 
+  it('leaves the % empty where the Difference is not last − previous', () => {
+    buildPage({ metrics: ['CLICKS', 'POSITION'] });
+    const row = document.querySelector('tbody tr');
+    row.cells[3].setAttribute('data-numeric-value', '-2'); // clicks 30 vs 28
+    row.cells[6].setAttribute('data-numeric-value', '-2.43'); // position 1.1 vs 3.5: within rounding
+    expect(tableCsv(findTable(document)).split('\r\n')[1]).toBe('blue widgets,30,28,-2,,1.1,3.5,-2.43,-68.57');
+  });
+
   it('leaves a missing number empty instead of writing NaN', () => {
     buildPage({ metrics: ['CLICKS'] });
     document.querySelector('tbody tr').cells[2].removeAttribute('data-numeric-value');

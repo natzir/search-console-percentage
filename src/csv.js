@@ -1,7 +1,7 @@
 // The comparison table as CSV: every row the page holds (not only the visible page of the table), the
 // exact numbers from data-numeric-value, Google's own headers, and a % change after each Difference.
 import { change, status } from './change.js';
-import { numeric } from './detect.js';
+import { agrees, numeric } from './detect.js';
 
 const field = value => (/[",\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value);
 const headerName = th => (th.getAttribute('data-name') ?? th.textContent).replace(/\s+/g, ' ').trim();
@@ -29,8 +29,8 @@ export function tableCsv({ table, metrics }) {
       }
       const metric = byDiff.get(i);
       if (metric) {
-        const [last, previous] = metric.cols.slice(0, 2).map(c => numeric(row.cells[c]));
-        if (Number.isNaN(last) || Number.isNaN(previous)) {
+        const [last, previous, difference] = metric.cols.map(c => numeric(row.cells[c]));
+        if (Number.isNaN(last) || Number.isNaN(previous) || !agrees(metric.key, last, previous, difference)) {
           out.push('');
         } else {
           const c = change(metric.key, last, previous);
