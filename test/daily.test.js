@@ -88,6 +88,19 @@ describe('sweep', () => {
     expect(points?.map(p => p.CLICKS.date)).toEqual(DAYS.map(d => d.date));
   });
 
+  it('reads the chart when it is scrolled out of view, where elementFromPoint finds nothing', async () => {
+    const { svg } = buildPage();
+    // Scrolled up past the top of the window, as when the person reads the table below.
+    svg.getBoundingClientRect = () => ({ left: 394, top: -244, right: 1145, bottom: -32, width: 751, height: 212, x: 394, y: -244 });
+    document.elementFromPoint = () => null;
+    try {
+      const points = await sweep(findChart(document), 'en', { frame: now });
+      expect(points?.map(p => p.CLICKS.date)).toEqual(DAYS.map(d => d.date));
+    } finally {
+      delete document.elementFromPoint;
+    }
+  });
+
   it('gives up when Google\'s tooltip did not update for a point', async () => {
     const { host } = buildPage();
     let moves = 0;

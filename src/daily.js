@@ -43,6 +43,20 @@ function mouse(doc, type, init) {
   }
 }
 
+// What a real mouse would hit at that point of the chart. Google listens on a transparent overlay over
+// the plot, not on the svg, so the event must reach it. When the chart is scrolled out of the window,
+// elementFromPoint finds nothing; the last element of the svg whose box holds the point (the overlay,
+// drawn on top) stands in for it.
+function hitTarget(doc, host, svg, x, y) {
+  const hit = doc.elementFromPoint?.(x, y);
+  if (hit && host.contains(hit)) return hit;
+  const holds = [...svg.querySelectorAll('*')].filter(el => {
+    const box = el.getBoundingClientRect();
+    return box.width > 0 && box.height > 0 && x >= box.left && x <= box.right && y >= box.top && y <= box.bottom;
+  });
+  return holds.at(-1) ?? svg;
+}
+
 // The same two dates as the point read before: the tooltip didn't move on. One date alone can repeat
 // when the periods differ in length.
 const repeats = (point, before, key) => point[key].date === before[key].date && point[key].previousDate === before[key].previousDate;
@@ -64,9 +78,7 @@ export async function sweep(chart, lang, { frame = nextFrame, abort = () => fals
       const rect = svg.getBoundingClientRect();
       const clientX = rect.left + plotX + x;
       const clientY = rect.top + plotY + 20;
-      const hit = doc.elementFromPoint?.(clientX, clientY);
-      const target = hit && host.contains(hit) ? hit : svg;
-      target.dispatchEvent(mouse(doc, 'mousemove', { bubbles: true, clientX, clientY }));
+      hitTarget(doc, host, svg, clientX, clientY).dispatchEvent(mouse(doc, 'mousemove', { bubbles: true, clientX, clientY }));
       await frame();
       if (abort()) return null;
       if (signature(svg) !== before) return null;

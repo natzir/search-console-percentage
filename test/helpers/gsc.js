@@ -78,7 +78,7 @@ export function buildPage({ lang = EN, metrics = ORDER, drawn = ['CLICKS', 'IMPR
     <div class="chart-card"><div class="chart-wrap">
       <div class="chart-block"><div class="chart-row" style="display:flex;flex-direction:row">
         <div role="application" class="host">
-          <svg width="751" height="212"><g transform="translate(26,10)"><g class="axis"><text>0</text></g>${lines}</g></svg>
+          <svg width="751" height="212"><g transform="translate(26,10)"><g class="axis"><text>0</text></g>${lines}<rect class="overlay" width="725" height="192" fill="transparent"></rect></g></svg>
           <div aria-live="polite"><span></span></div>
         </div>
         <div class="chart-side"></div>
@@ -89,10 +89,16 @@ export function buildPage({ lang = EN, metrics = ORDER, drawn = ['CLICKS', 'IMPR
   for (const el of doc.querySelectorAll('[data-guidedhelpid], table, [role="application"]')) visible(el);
 
   // Google's tooltip: the nearest point's values for every drawn metric, both periods. Like Google's, it
-  // finds the point from where the SVG is on screen now.
+  // listens on a transparent overlay over the plot (not on the svg itself) and finds the point from
+  // where the SVG is on screen now. jsdom has no layout, so the overlay's box follows the svg's.
   const host = doc.querySelector('[role="application"]');
   const svg = host.querySelector('svg');
-  svg.addEventListener('mousemove', event => {
+  const overlay = svg.querySelector('rect.overlay');
+  overlay.getBoundingClientRect = () => {
+    const r = svg.getBoundingClientRect();
+    return { left: r.left + 26, top: r.top + 10, right: r.left + 26 + 725, bottom: r.top + 10 + 192, width: 725, height: 192, x: r.left + 26, y: r.top + 10 };
+  };
+  overlay.addEventListener('mousemove', event => {
     const x = event.clientX - svg.getBoundingClientRect().left - 26;
     const i = xs.reduce((best, v, j) => (Math.abs(v - x) < Math.abs(xs[best] - x) ? j : best), 0);
     const day = days[i];
