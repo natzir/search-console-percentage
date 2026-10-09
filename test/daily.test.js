@@ -97,6 +97,13 @@ describe('sweep', () => {
     expect(moves).toBe(2);
   });
 
+  it('reads on when only the previous date repeats, as when Google pairs two days with one in periods of different lengths', async () => {
+    const days = DAYS.map(day => ({ ...day, prev: DAYS[0].prev }));
+    buildPage({ days });
+    const points = await sweep(findChart(document), 'en', { frame: now });
+    expect(points?.map(p => p.CLICKS.date)).toEqual(DAYS.map(day => day.date));
+  });
+
   it('gives up when the tooltip is written in a way it can\'t read', async () => {
     const { host, svg } = buildPage();
     svg.addEventListener('mousemove', () => {

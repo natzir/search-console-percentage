@@ -43,8 +43,9 @@ function mouse(doc, type, init) {
   }
 }
 
-// The same date, or the same previous date, as the point read before: the tooltip didn't move on.
-const repeats = (point, before, key) => point[key].date === before[key].date || point[key].previousDate === before[key].previousDate;
+// The same two dates as the point read before: the tooltip didn't move on. One date alone can repeat
+// when the periods differ in length.
+const repeats = (point, before, key) => point[key].date === before[key].date && point[key].previousDate === before[key].previousDate;
 
 // Moves a synthetic mouse across the chart, point by point, and reads the tooltip each time. Returns
 // null if the chart's data changes during the sweep, if Google's tooltip didn't update for a point, if a
