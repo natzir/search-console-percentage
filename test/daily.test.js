@@ -57,6 +57,16 @@ describe('sweep', () => {
     expect(await sweep(findChart(document), 'en', { frame })).toBeNull();
   });
 
+  it('gives up, and cleans up, when the caller aborts it', async () => {
+    const { host } = buildPage();
+    let step = 0;
+    const frame = async () => { step++; };
+    const abort = () => step >= 2;
+    expect(await sweep(findChart(document), 'en', { frame, abort })).toBeNull();
+    expect(step).toBe(2);
+    expect(host.classList.contains('scpc-sweeping')).toBe(false);
+  });
+
   it('marks the chart while it sweeps, and clears the mark after', async () => {
     const { host } = buildPage();
     let marked = false;

@@ -42,8 +42,9 @@ function mouse(doc, type, init) {
 }
 
 // Moves a synthetic mouse across the chart, point by point, and reads the tooltip each time. Returns
-// null if the chart's data changes during the sweep, so the caller runs it again.
-export async function sweep(chart, lang, { frame = nextFrame } = {}) {
+// null if the chart's data changes during the sweep, or if `abort()` turns true (checked after each
+// frame, before the point is read), so the caller can decide whether to run it again.
+export async function sweep(chart, lang, { frame = nextFrame, abort = () => false } = {}) {
   const { host, svg, plotX, plotY, xs, drawn } = chart;
   const doc = host.ownerDocument;
   const before = signature(svg);
@@ -58,6 +59,7 @@ export async function sweep(chart, lang, { frame = nextFrame } = {}) {
       const target = hit && host.contains(hit) ? hit : svg;
       target.dispatchEvent(mouse(doc, 'mousemove', { bubbles: true, clientX, clientY }));
       await frame();
+      if (abort()) return null;
       if (signature(svg) !== before) return null;
       points.push(readPoint(liveLines(host), drawn, lang));
     }
