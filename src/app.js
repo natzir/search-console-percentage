@@ -31,8 +31,7 @@ export function start(doc, win, { storage, frame, delay = 200, settle = 400, pat
 
   const clear = () => {
     removeAll(doc);
-    seen = null;
-    keyWait = null;
+    seen = null; // keyWait stays: it expires by itself, and the old chart is still the old chart
   };
 
   const exportCsv = () => {
@@ -117,15 +116,19 @@ export function start(doc, win, { storage, frame, delay = 200, settle = 400, pat
     if (stopped || !enabled) return;
     if (!points) {
       if (aborted) return schedule();
-      if (++fails >= 3) blocked = signature(chart.svg);
-      else schedule();
+      if (++fails >= 3) {
+        blocked = signature(chart.svg);
+        removeStrips();
+      } else schedule();
       return;
     }
     // Only what was read from the very chart and data the cache is for.
     const now = findChart(doc);
     if (!now || now.signature !== startSignature || cacheKey(now) !== target.key) {
-      if (++fails >= 3) blocked = now?.signature ?? chart.signature;
-      else schedule();
+      if (++fails >= 3) {
+        blocked = now?.signature ?? chart.signature;
+        removeStrips();
+      } else schedule();
       return;
     }
     fails = 0;
@@ -160,12 +163,13 @@ export function start(doc, win, { storage, frame, delay = 200, settle = 400, pat
     annotateCards(cards, l);
     if (!chart?.compare) return removeStrips();
     const dataKey = cacheKey(chart);
-    const t = Date.now();
-    const unchanged = seen?.signature === chart.signature;
+    const t = performance.now();
+    const before = seen?.signature; // the chart as the last draw saw it, under the old key
+    const unchanged = before === chart.signature;
     if (!unchanged) seen = { signature: chart.signature, at: t };
     if (cache?.key !== dataKey) {
       // Same page and chart size but other filters or dates: Google still shows the old chart until it has fetched the new one.
-      const waits = cache && cache.key.split('|').pop() === dataKey.split('|').pop();
+      const waits = cache && unchanged && cache.key.split('|').pop() === dataKey.split('|').pop();
       cache = { key: dataKey, points: [], read: new Set(), fingerprints: {} };
       keyWait = waits ? { signature: chart.signature, at: t } : null;
     }
@@ -199,7 +203,7 @@ export function start(doc, win, { storage, frame, delay = 200, settle = 400, pat
   // A sooner draw replaces a later one that was waiting (a change must not sit behind a long wait).
   let due = 0;
   const schedule = (ms = delay) => {
-    const at = Date.now() + ms;
+    const at = performance.now() + ms;
     if (timer !== null && at >= due) return;
     clearTimeout(timer);
     due = at;
@@ -223,7 +227,7 @@ export function start(doc, win, { storage, frame, delay = 200, settle = 400, pat
       if (enabled) schedule();
       else clear();
     },
-    refresh: schedule,
+    refresh: () => schedule(),
     stop() {
       stopped = true;
       enabled = false;

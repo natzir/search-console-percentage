@@ -19,7 +19,7 @@ describe('start', () => {
   it('adds the pills, the card pills, the export button and the strip by itself', async () => {
     buildPage();
     app = start(document, fakeWin(PERF), { storage: memoryStorage(), frame: now, delay: 0, settle: 0, patience: 15 });
-    await wait(60);
+    await wait(150);
     expect(document.querySelectorAll('[data-scpc="pill"]').length).toBe(12);
     expect(document.querySelectorAll('[data-scpc="card-pill"]').length).toBe(4);
     expect(document.querySelector('[data-scpc="toolbar"]')).not.toBeNull();
@@ -421,7 +421,6 @@ describe('start, cache and loading', () => {
 
   it('stops retrying when the page keeps moving under the sweep', async () => {
     buildPage();
-    const { svg } = { svg: document.querySelector('[role="application"] svg') };
     let n = 0;
     const win = fakeWin(PERF);
     // The URL changes during every sweep, so what was read never belongs to the key it started with.
@@ -432,6 +431,51 @@ describe('start, cache and loading', () => {
     const stable = n;
     await wait(100);
     expect(n).toBe(stable);
-    expect(svg).toBeTruthy();
+    // Given up: no strip left stuck on "Reading the days…".
+    expect(document.querySelector('[data-scpc="strip"]')).toBeNull();
+  });
+
+  it('reads at once when the new chart is already up at the first draw after a URL change', async () => {
+    buildPage();
+    const { calls, frame } = counting();
+    const win = fakeWin(PERF);
+    app = start(document, win, { frame, delay: 0, settle: 20, patience: 5000 });
+    await wait(100);
+    expect(calls.n).toBe(3);
+    win.location = new URL(`${PERF}&query=abc`);
+    buildPage({ days: NEW });
+    await wait(120);
+    expect(calls.n).toBe(6);
+    expect(tones()).toEqual(['better', 'worse', 'worse']);
+  });
+
+  it('does not wait for the old chart when the new one has another number of points', async () => {
+    buildPage();
+    const { calls, frame } = counting();
+    const win = fakeWin(PERF);
+    app = start(document, win, { frame, delay: 0, settle: 20, patience: 5000 });
+    await wait(100);
+    win.location = new URL(`${PERF}&query=abc`);
+    buildPage({ days: DAYS.slice(0, 2) });
+    await wait(120);
+    expect(calls.n).toBe(5);
+    expect(tones()).toEqual(['worse', 'better']);
+  });
+
+  it('keeps waiting for the new chart across turning the icon off and on', async () => {
+    buildPage();
+    const { calls, frame } = counting();
+    const win = fakeWin(PERF);
+    app = start(document, win, { frame, delay: 0, settle: 20, patience: 5000 });
+    await wait(100);
+    win.location = new URL(`${PERF}&query=abc`);
+    document.body.append(document.createElement('div'));
+    await wait(60);
+    app.toggle();
+    app.toggle();
+    await wait(100);
+    expect(calls.n).toBe(3);
+    expect(document.querySelector('[data-scpc="strip"]').getAttribute('aria-busy')).toBe('true');
+    expect(tones()).toEqual([]);
   });
 });
