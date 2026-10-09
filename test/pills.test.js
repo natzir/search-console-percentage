@@ -58,9 +58,19 @@ describe('annotateTable', () => {
     row.cells[3].setAttribute('data-numeric-value', '-2'); // clicks 30 vs 28
     row.cells[6].setAttribute('data-numeric-value', '21.4'); // impressions 89 vs 68: within rounding
     row.cells[9].setAttribute('data-numeric-value', '-7.45'); // CTR 33.7 vs 41.2: within rounding
-    row.cells[12].setAttribute('data-numeric-value', '-2.34'); // position 1.1 vs 3.5
+    row.cells[12].setAttribute('data-numeric-value', '-2.6'); // position 1.1 vs 3.5
     annotateTable(model, 'en');
     expect([3, 6, 9, 12].map(i => row.cells[i].querySelector('[data-scpc="pill"]')?.textContent ?? null)).toEqual([null, '▲ +30.9%', '▼ -18.2%', null]);
+  });
+
+  it('keeps the pill where Google rounds Last, Previous and the Difference apart by 0.1', () => {
+    buildPage();
+    const row = document.querySelector('tbody tr');
+    const set = (i, v) => row.cells[i].setAttribute('data-numeric-value', v);
+    set(7, '3.8'); set(8, '4.2'); set(9, '-0.3'); // CTR: 3.8 − 4.2 is -0.4
+    set(10, '31.5'); set(11, '9.2'); set(12, '22.2'); // position: 31.5 − 9.2 is 22.3
+    annotateTable(findTable(document), 'en');
+    expect([9, 12].map(i => row.cells[i].querySelector('[data-scpc="pill"]')?.textContent ?? null)).toEqual(['▼ -9.5%', '▲ +242%']);
   });
 
   it('leaves a cell without its number alone', () => {

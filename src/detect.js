@@ -33,7 +33,8 @@ export const numeric = cell => {
 
 // Last − previous is the Difference Google shows, give or take its rounding. If not, the columns are not
 // what they seem (Google reordered them) and no % is given. A Difference without a number can't tell.
-const TOLERANCE = { CTR: 0.051, POSITION: 0.051 };
+// CTR and position come rounded to 0.1 in all three columns, so they can be 0.1 apart (31.5 − 9.2 → 22.2).
+const TOLERANCE = { CTR: 0.11, POSITION: 0.11 };
 export const agrees = (key, last, previous, difference) =>
   Number.isNaN(difference) || Math.abs(last - previous - difference) <= (TOLERANCE[key] ?? 0.5);
 
