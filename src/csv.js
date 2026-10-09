@@ -1,6 +1,6 @@
 // The comparison table as CSV: every row the page holds (not only the visible page of the table), the
 // exact numbers from data-numeric-value, Google's own headers, and a % change after each Difference.
-import { change } from './change.js';
+import { change, status } from './change.js';
 import { numeric } from './detect.js';
 
 const field = value => (/[",\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value);
@@ -34,7 +34,7 @@ export function tableCsv({ table, metrics }) {
           out.push('');
         } else {
           const c = change(metric.key, last, previous);
-          out.push(c.tone === 'new' ? 'new' : (c.pct ?? 0).toFixed(2));
+          out.push(status(c) ?? (c.pct ?? 0).toFixed(2));
         }
       }
     });

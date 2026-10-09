@@ -40,6 +40,13 @@ describe('tableCsv', () => {
     expect(lines[3]).toBe("'@home,2,1,1,100.00");
   });
 
+  it('writes lost for a position of 0', () => {
+    buildPage({ metrics: ['POSITION'], rows: [{ dim: 'gone', POSITION: [0, 9.5] }, { dim: 'never', POSITION: [0, 0] }] });
+    const lines = tableCsv(findTable(document)).split('\r\n');
+    expect(lines[1]).toBe('gone,0,9.5,-9.5,lost');
+    expect(lines[2]).toBe('never,0,0,0,0.00');
+  });
+
   it('leaves a missing number empty instead of writing NaN', () => {
     buildPage({ metrics: ['CLICKS'] });
     document.querySelector('tbody tr').cells[2].removeAttribute('data-numeric-value');

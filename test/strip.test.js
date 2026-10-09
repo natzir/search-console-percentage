@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach, vi } from 'vitest';
 import { renderLoading, renderStrip } from '../src/strip.js';
 import { findChart } from '../src/detect.js';
 import { sweep } from '../src/daily.js';
-import { buildPage } from './helpers/gsc.js';
+import { DAYS, buildPage } from './helpers/gsc.js';
 
 const now = () => Promise.resolve();
 const LABELS = { CLICKS: 'Total clicks', IMPRESSIONS: 'Total impressions', CTR: 'Average CTR', POSITION: 'Average position' };
@@ -51,6 +51,23 @@ describe('renderStrip', () => {
     const { chart, points } = await setup({ drawn: ['POSITION'] });
     const strip = renderStrip(document, chart, points, { key: 'POSITION', labels: LABELS, lang: 'en', onSelect() {} });
     expect([...strip.querySelectorAll('rect[data-scpc-tone]')].map(b => b.getAttribute('data-scpc-tone'))).toEqual(['worse', 'worse', 'better']);
+  });
+
+  it('draws a lost position as a full bar down in the worse colour, and says lost', async () => {
+    const days = DAYS.map((d, i) => (i === 0 ? { ...d, POSITION: [0, 9.5] } : d));
+    const { chart, points } = await setup({ drawn: ['POSITION'], days });
+    const strip = renderStrip(document, chart, points, { key: 'POSITION', labels: LABELS, lang: 'en', onSelect() {} });
+    const bar = strip.querySelector('rect[data-scpc-tone]');
+    expect([bar.getAttribute('data-scpc-tone'), bar.getAttribute('fill'), bar.getAttribute('y'), bar.getAttribute('height')]).toEqual(['worse', '#d93025', '62', '52']);
+    bar.dispatchEvent(new Event('pointerover', { bubbles: true }));
+    const tip = strip.querySelector('.scpc-tip');
+    expect([...tip.children].map(c => c.textContent)).toEqual(['Wed, Sep 9, 2026 vs Wed, Aug 12, 2026', 'Average position: 0 vs 9.5', 'lost']);
+    expect(tip.children[2].className).toBe('scpc-tip-worse');
+    const plot = strip.querySelector('.scpc-plot');
+    plot.dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true, cancelable: true }));
+    expect(strip.querySelector('[aria-live="polite"]').textContent).toBe('Wed, Sep 9, 2026 vs Wed, Aug 12, 2026. Average position 0 vs 9.5. lost.');
+    expect(plot.getAttribute('aria-label')).toMatch(/1 (day )?worse, 0 new, 1 lost\./);
+    expect([...strip.querySelectorAll('text')].some(t => t.textContent === '↓')).toBe(false);
   });
 
   it('offers the drawn metrics in a selector, and redraws in place', async () => {

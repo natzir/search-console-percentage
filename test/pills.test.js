@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { annotateCards, annotateTable, removeAll } from '../src/pills.js';
 import { findCards, findTable } from '../src/detect.js';
-import { ES, buildPage } from './helpers/gsc.js';
+import { ES, TOTALS, buildPage } from './helpers/gsc.js';
 
 const plain = s => s.replace(/[  ]/g, ' ');
 const pills = () => [...document.querySelectorAll('[data-scpc="pill"]')].map(p => [plain(p.textContent), p.className]);
@@ -41,6 +41,13 @@ describe('annotateTable', () => {
     cell.innerHTML = '<span><span>2</span></span>';
     annotateTable(findTable(document), 'en');
     expect(cell.querySelectorAll('[data-scpc="pill"]')).toHaveLength(1);
+  });
+
+  it('says lost, in the worse colour, for a position of 0 (no impressions in the last period)', () => {
+    buildPage({ rows: [{ dim: 'gone', CLICKS: [0, 2], IMPRESSIONS: [0, 40], CTR: [0, 5], POSITION: [0, 9.5] }] });
+    annotateTable(findTable(document), 'en');
+    const pill = document.querySelector('tbody tr').cells[12].querySelector('[data-scpc="pill"]');
+    expect([pill.textContent, pill.className]).toEqual(['lost', 'scpc-pill scpc-worse']);
   });
 
   it('leaves a cell without its number alone', () => {
@@ -89,6 +96,14 @@ describe('annotateCards', () => {
     buildPage({ metrics: ['CLICKS', 'CTR'] });
     annotateCards(findCards(document, 'en'), 'en');
     expect(document.querySelector('[data-label="CTR"] [data-scpc="card-pill"]').textContent).toBe('▲ +0.4 pp · +133%');
+  });
+
+  it('says lost on the position card when the last period has no position', () => {
+    buildPage({ totals: { ...TOTALS, POSITION: [0, 9.5] } });
+    annotateCards(findCards(document, 'en'), 'en');
+    const pill = document.querySelector('[data-label="POSITION"] [data-scpc="card-pill"]');
+    expect(pill.textContent).toBe('▼ -9.5 · lost');
+    expect(pill.className).toContain('scpc-worse');
   });
 
   it('turns the pill white on a card filled with its metric colour', () => {

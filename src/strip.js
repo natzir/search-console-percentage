@@ -1,7 +1,7 @@
 // The strip under Google's chart: one bar per point for the chosen metric, at the chart's own x, up
 // when the number went up, coloured by whether that is good. Google's chart is left untouched. The bars
 // can be read with a pointer or the keyboard: a tooltip next to the active bar, announced politely.
-import { change } from './change.js';
+import { change, status } from './change.js';
 import { formatPercent, formatValue } from './numbers.js';
 
 const NS = 'http://www.w3.org/2000/svg';
@@ -60,10 +60,12 @@ function header(doc, keys, key, labels, { onSelect, disabled }) {
 
 // What a bar says: the three lines of its tooltip and the one line that is announced.
 function describe(key, v, c, label, lang) {
-  const pct = c.tone === 'new' ? 'new' : formatPercent(c.pct ?? 0, lang);
+  const word = status(c) ?? TONE_WORDS[c.tone]; // new, lost, no change
+  const signed = !status(c) && (c.tone === 'better' || c.tone === 'worse');
+  const pct = formatPercent(c.pct ?? 0, lang);
   const values = `${formatValue(key, v.last, lang)} vs ${formatValue(key, v.previous, lang)}`;
-  const verdict = c.tone === 'better' || c.tone === 'worse' ? `${pct} · ${TONE_WORDS[c.tone]}` : TONE_WORDS[c.tone];
-  const spoken = c.tone === 'better' || c.tone === 'worse' ? `${pct}, ${TONE_WORDS[c.tone]}.` : `${TONE_WORDS[c.tone]}.`;
+  const verdict = signed ? `${pct} · ${TONE_WORDS[c.tone]}` : word;
+  const spoken = signed ? `${pct}, ${TONE_WORDS[c.tone]}.` : `${word}.`;
   return {
     lines: [`${v.date} vs ${v.previousDate}`, `${label}: ${values}`, verdict],
     spoken: `${v.date} vs ${v.previousDate}. ${label} ${values}. ${spoken}`,
@@ -88,9 +90,10 @@ function bars(doc, chart, points, key, labels, lang) {
     if (!v || !Number.isFinite(v.last) || !Number.isFinite(v.previous)) return;
     const c = change(key, v.last, v.previous);
     const x = chart.plotX + chart.xs[i] - barWidth / 2;
-    let y = PAD;
+    // New: a full bar up. Lost (a position gone to 0): a full bar down.
+    let y = c.lost ? MID : PAD;
     let h = MID - PAD;
-    if (c.tone !== 'new') {
+    if (c.tone !== 'new' && !c.lost) {
       const pct = Math.max(-CAP, Math.min(CAP, c.pct ?? 0));
       h = Math.max(1, (Math.abs(pct) / CAP) * (MID - PAD));
       y = pct >= 0 ? MID - h : MID;
@@ -98,7 +101,7 @@ function bars(doc, chart, points, key, labels, lang) {
     const bar = svgEl(doc, 'rect', { x, y, width: barWidth, height: h, rx: 2, fill: COLORS[c.tone], 'data-scpc-tone': c.tone, 'data-i': items.length });
     // A transparent column over the whole plot, so a one-pixel bar is as easy to point at as a tall one.
     hits.push(svgEl(doc, 'rect', { x: x - (gap - barWidth) / 2, y: 0, width: Math.max(barWidth, gap), height: HEIGHT, fill: 'transparent', 'data-i': items.length }));
-    items.push({ bar, tone: c.tone, cx: x + barWidth / 2, ...describe(key, v, c, labels[key] ?? key, lang) });
+    items.push({ bar, tone: c.tone, lost: Boolean(c.lost), cx: x + barWidth / 2, ...describe(key, v, c, labels[key] ?? key, lang) });
     marks.push(bar);
     if (c.tone !== 'new' && Math.abs(c.pct ?? 0) > CAP) marks.push(svgText(doc, x + barWidth / 2, c.pct > 0 ? PAD - 1 : HEIGHT - PAD + 9, c.pct > 0 ? '↑' : '↓', 'middle'));
   });
@@ -107,10 +110,11 @@ function bars(doc, chart, points, key, labels, lang) {
 }
 
 function summary(items, key, labels) {
-  const n = tone => items.filter(item => item.tone === tone).length;
+  const n = tone => items.filter(item => item.tone === tone && !item.lost).length;
   const days = tone => `${n(tone)} ${n(tone) === 1 ? 'day' : 'days'}`;
-  const flat = n('flat') ? `, ${n('flat')} no change` : '';
-  return `Change by date, ${labels[key] ?? key}: ${days('better')} better, ${days('worse')} worse, ${n('new')} new${flat}. Use the left and right arrow keys to read each day.`;
+  const lost = items.filter(item => item.lost).length;
+  const more = `${lost ? `, ${lost} lost` : ''}${n('flat') ? `, ${n('flat')} no change` : ''}`;
+  return `Change by date, ${labels[key] ?? key}: ${days('better')} better, ${days('worse')} worse, ${n('new')} new${more}. Use the left and right arrow keys to read each day.`;
 }
 
 function ensureBox(doc, chart) {
