@@ -25,6 +25,21 @@ describe('tableCsv', () => {
     expect(lines[3]).toBe('"widget ""pro""",1423,2792,-1369,-49.03');
   });
 
+  it('keeps spreadsheets from reading a query as a formula, but not the numbers', () => {
+    buildPage({
+      metrics: ['CLICKS'],
+      rows: [
+        { dim: '+500 euros', CLICKS: [3, 4] },
+        { dim: '=HYPERLINK("x")', CLICKS: [1, 1] },
+        { dim: '@home', CLICKS: [2, 1] },
+      ],
+    });
+    const lines = tableCsv(findTable(document)).split('\r\n');
+    expect(lines[1]).toBe("'+500 euros,3,4,-1,-25.00");
+    expect(lines[2]).toBe('"\'=HYPERLINK(""x"")",1,1,0,0.00');
+    expect(lines[3]).toBe("'@home,2,1,1,100.00");
+  });
+
   it('leaves a missing number empty instead of writing NaN', () => {
     buildPage({ metrics: ['CLICKS'] });
     document.querySelector('tbody tr').cells[2].removeAttribute('data-numeric-value');

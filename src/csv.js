@@ -5,6 +5,9 @@ import { change } from './change.js';
 const field = value => (/[",\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value);
 const headerName = th => (th.getAttribute('data-name') ?? th.textContent).replace(/\s+/g, ' ').trim();
 const metricName = th => (th.getAttribute('data-name') ?? th.textContent).split('\n')[0].trim();
+// A text cell that starts like a formula would be run as one by Excel and Sheets: a query "+500 euros"
+// or "=HYPERLINK(...)" gets a leading apostrophe, which the spreadsheet hides.
+const safeText = text => (/^[=+\-@\t\r]/.test(text) ? `'${text}` : text);
 const number = cell => {
   const value = cell?.getAttribute('data-numeric-value');
   return value == null || value === '' ? NaN : Number(value);
@@ -25,7 +28,7 @@ export function tableCsv({ table, metrics }) {
         const value = number(cell);
         out.push(Number.isNaN(value) ? '' : String(value));
       } else {
-        out.push(cell.textContent.replace(/\s+/g, ' ').trim());
+        out.push(safeText(cell.textContent.replace(/\s+/g, ' ').trim()));
       }
       const metric = byDiff.get(i);
       if (metric) {
