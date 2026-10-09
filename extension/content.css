@@ -36,5 +36,5 @@
 .scpc-toolbar{display:flex;justify-content:flex-end;margin:8px 0}
 .scpc-export{font:500 13px Roboto,Arial,sans-serif;color:#1a73e8;background:#fff;border:1px solid #dadce0;border-radius:4px;padding:6px 12px;cursor:pointer}
 .scpc-export:hover{background:#f6fafe}
-/* While the extension reads the days, Google's hover marks and tooltip stay out of sight. */
+/* While the extension reads the chart, Google's hover marks and tooltip stay out of sight. */
 .scpc-sweeping svg circle,.scpc-sweeping>:not(svg){visibility:hidden!important}

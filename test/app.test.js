@@ -305,7 +305,7 @@ describe('start, cache and loading', () => {
     const strip = document.querySelector('[data-scpc="strip"]');
     expect(strip.getAttribute('aria-busy')).toBe('true');
     expect(strip.querySelector('select').disabled).toBe(true);
-    expect(strip.textContent).toContain('Reading the days…');
+    expect(strip.textContent).toContain('Reading the chart…');
     expect(strip.querySelectorAll('rect')).toHaveLength(0);
     release();
     await wait(30);
@@ -487,7 +487,7 @@ describe('start, cache and loading', () => {
     const stable = n;
     await wait(100);
     expect(n).toBe(stable);
-    // Given up: no strip left stuck on "Reading the days…".
+    // Given up: no strip left stuck on "Reading the chart…".
     expect(document.querySelector('[data-scpc="strip"]')).toBeNull();
   });
 

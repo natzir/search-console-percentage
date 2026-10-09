@@ -66,7 +66,7 @@ describe('renderStrip', () => {
     const plot = strip.querySelector('.scpc-plot');
     plot.dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true, cancelable: true }));
     expect(strip.querySelector('[aria-live="polite"]').textContent).toBe('Wed, Sep 9, 2026 vs Wed, Aug 12, 2026. Average position 0 vs 9.5. lost.');
-    expect(plot.getAttribute('aria-label')).toMatch(/1 (day )?worse, 0 new, 1 lost\./);
+    expect(plot.getAttribute('aria-label')).toMatch(/: 1 better, 1 worse, 0 new, 1 lost\./);
     expect([...strip.querySelectorAll('text')].some(t => t.textContent === '↓')).toBe(false);
   });
 
@@ -124,7 +124,7 @@ describe('renderStrip', () => {
     expect(plot.getAttribute('tabindex')).toBe('0');
     expect(plot.getAttribute('role')).toBe('group');
     expect(plot.getAttribute('aria-roledescription')).toBe('bar chart');
-    expect(plot.getAttribute('aria-label')).toBe('Change by date, Total clicks: 1 day better, 1 day worse, 1 new. Use the left and right arrow keys to read each day.');
+    expect(plot.getAttribute('aria-label')).toBe('Change by date, Total clicks: 1 better, 1 worse, 1 new. Use the left and right arrow keys to read each bar.');
     expect(strip.querySelector('svg').getAttribute('aria-hidden')).toBe('true');
     plot.dispatchEvent(new Event('focus'));
     expect(strip.querySelector('.scpc-tip').hidden).toBe(false);
@@ -151,7 +151,7 @@ describe('renderStrip', () => {
     expect(strip.getAttribute('aria-busy')).toBe('true');
     expect(strip.querySelector('select').disabled).toBe(true);
     expect(strip.querySelectorAll('rect')).toHaveLength(0);
-    expect(strip.textContent).toContain('Reading the days…');
+    expect(strip.textContent).toContain('Reading the chart…');
     renderStrip(document, chart, points, { key: 'CLICKS', labels: LABELS, lang: 'en', onSelect() {} });
     expect(strip.hasAttribute('aria-busy')).toBe(false);
   });
@@ -182,9 +182,9 @@ describe('renderStrip', () => {
     expect(document.querySelector('.scpc-tip').hidden).toBe(false);
   });
 
-  it('pluralises the summary', async () => {
+  it('counts the bars by tone without calling them days (a bar can be a week or a month)', async () => {
     const { chart, points } = await setup();
     const strip = renderStrip(document, chart, [points[0], points[0], points[1]], { key: 'CLICKS', labels: LABELS, lang: 'en', onSelect() {} });
-    expect(strip.querySelector('.scpc-plot').getAttribute('aria-label')).toContain('1 day better, 2 days worse, 0 new');
+    expect(strip.querySelector('.scpc-plot').getAttribute('aria-label')).toContain(': 1 better, 2 worse, 0 new.');
   });
 });

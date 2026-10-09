@@ -110,11 +110,11 @@ function bars(doc, chart, points, key, labels, lang) {
 }
 
 function summary(items, key, labels) {
+  // No "days": a bar is a day, a week or a month, as Google's chart is.
   const n = tone => items.filter(item => item.tone === tone && !item.lost).length;
-  const days = tone => `${n(tone)} ${n(tone) === 1 ? 'day' : 'days'}`;
   const lost = items.filter(item => item.lost).length;
   const more = `${lost ? `, ${lost} lost` : ''}${n('flat') ? `, ${n('flat')} no change` : ''}`;
-  return `Change by date, ${labels[key] ?? key}: ${days('better')} better, ${days('worse')} worse, ${n('new')} new${more}. Use the left and right arrow keys to read each day.`;
+  return `Change by date, ${labels[key] ?? key}: ${n('better')} better, ${n('worse')} worse, ${n('new')} new${more}. Use the left and right arrow keys to read each bar.`;
 }
 
 function ensureBox(doc, chart) {
@@ -139,11 +139,11 @@ function align(chart, box, head, body) {
   return offset;
 }
 
-// The strip while the days are being read: same height as the finished one, no bars.
+// The strip while the chart is being read: same height as the finished one, no bars.
 export function renderLoading(doc, chart, { key, keys = chart.drawn, labels, lang }) {
   const box = ensureBox(doc, chart);
   const head = header(doc, keys, key, labels, { disabled: true });
-  const body = html(doc, 'div', 'scpc-loading', 'Reading the days…');
+  const body = html(doc, 'div', 'scpc-loading', 'Reading the chart…');
   box.setAttribute('aria-busy', 'true');
   box.replaceChildren(head, body);
   align(chart, box, head, body);
