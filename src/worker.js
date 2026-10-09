@@ -1,8 +1,11 @@
 // The service worker's logic; it takes the Chrome APIs as `api` so tests pass a fake.
 export const WELCOME_PAGE = 'welcome.html';
 
+// The welcome page opens on first install, and on the update from 0.x: there a click on the icon ran the
+// extension, now it works by itself and the icon turns it off.
 export async function installed(details, api) {
-  if (details.reason === 'install') await api.tabs.create({ url: WELCOME_PAGE });
+  const fromZero = details.reason === 'update' && /^0\./.test(details.previousVersion ?? '');
+  if (details.reason === 'install' || fromZero) await api.tabs.create({ url: WELCOME_PAGE });
 }
 
 // The icon turns the extension off and on in that tab. Tabs without it (other sites, Search Console

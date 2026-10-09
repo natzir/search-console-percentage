@@ -16,10 +16,18 @@ const fakeApi = ({ refuse = false } = {}) => {
 };
 
 describe('worker', () => {
-  it('opens the welcome page on first install only', async () => {
+  it('opens the welcome page on first install, not on later updates', async () => {
     const api = fakeApi();
     await installed({ reason: 'install' }, api);
     for (const reason of ['update', 'chrome_update', 'shared_module_update']) await installed({ reason }, api);
+    await installed({ reason: 'update', previousVersion: '1.0.0' }, api);
+    await installed({ reason: 'update', previousVersion: '10.0.0' }, api);
+    expect(api.calls.created).toEqual([{ url: WELCOME_PAGE }]);
+  });
+
+  it('opens it on the update from 0.x, where the icon ran the extension (now it turns it off)', async () => {
+    const api = fakeApi();
+    await installed({ reason: 'update', previousVersion: '0.0.0.1' }, api);
     expect(api.calls.created).toEqual([{ url: WELCOME_PAGE }]);
   });
 
