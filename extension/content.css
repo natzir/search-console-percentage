@@ -1,0 +1,24 @@
+/* Everything the extension adds to Search Console. Classes start with scpc-; colours follow Google's. */
+.scpc-pill{display:inline-flex;align-items:center;gap:3px;margin-left:6px;padding:1px 7px;border-radius:10px;font:500 12px/18px Roboto,Arial,sans-serif;white-space:nowrap;vertical-align:middle}
+.scpc-better{background:#e6f4ea;color:#137333}
+.scpc-worse{background:#fce8e6;color:#c5221f}
+.scpc-flat{background:#f1f3f4;color:#5f6368}
+.scpc-new{background:#e8f0fe;color:#1967d2}
+.scpc-card-pill{display:flex;width:max-content;margin:8px 0 0}
+.scpc-card-pill.scpc-on-colour{background:#fff}
+.scpc-strip{margin:10px 0 0;font:12px Roboto,Arial,sans-serif;color:#5f6368}
+.scpc-strip-head{display:flex;align-items:center;gap:16px;margin:0 0 4px}
+.scpc-strip-head b{font-weight:500;font-size:13px;color:#3c4043}
+.scpc-legend{display:inline-flex;align-items:center;gap:4px}
+.scpc-swatch{display:inline-block;width:10px;height:10px;border-radius:2px;margin-left:8px}
+.scpc-swatch.scpc-better{background:#34a853}
+.scpc-swatch.scpc-worse{background:#ea4335}
+.scpc-swatch.scpc-new{background:#8ab4f8}
+.scpc-select{margin-left:auto;font:13px Roboto,Arial,sans-serif;padding:2px 6px;border:1px solid #dadce0;border-radius:4px;background:#fff;color:#3c4043}
+.scpc-bars{display:block;overflow:visible}
+.scpc-bars text{font:10px Roboto,Arial,sans-serif;fill:#5f6368}
+.scpc-toolbar{display:flex;justify-content:flex-end;margin:8px 0}
+.scpc-export{font:500 13px Roboto,Arial,sans-serif;color:#1a73e8;background:#fff;border:1px solid #dadce0;border-radius:4px;padding:6px 12px;cursor:pointer}
+.scpc-export:hover{background:#f6fafe}
+/* While the extension reads the days, Google's hover marks and tooltip stay out of sight. */
+.scpc-sweeping svg circle,.scpc-sweeping>:not(svg){visibility:hidden!important}
