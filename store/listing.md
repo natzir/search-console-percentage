@@ -10,7 +10,7 @@ Package: `npm run pack` → `dist/search-console-percentage-<version>.zip` (only
 
 **Summary** (132 characters max). The dashboard takes it from the package (the manifest's `description`), so it must stay exactly this:
 
-> See how much every number changed when you compare dates in Search Console's Performance reports, day by day too.
+> See how much every number changed when you compare dates in Search Console's Performance reports: totals, chart, table and CSV.
 
 **Category:** Developer Tools
 

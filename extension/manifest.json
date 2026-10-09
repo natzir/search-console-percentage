@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Search Console Percentage Calculator by Natzir",
   "version": "1.0.0",
-  "description": "See how much every number changed when you compare dates in Search Console's Performance reports, day by day too.",
+  "description": "See how much every number changed when you compare dates in Search Console's Performance reports: totals, chart, table and CSV.",
   "minimum_chrome_version": "120",
   "permissions": ["storage"],
   "background": { "service_worker": "background.js" },
