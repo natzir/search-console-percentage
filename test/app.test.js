@@ -77,7 +77,8 @@ describe('start', () => {
     Object.defineProperty(host, 'matches', { configurable: true, value: sel => sel === ':hover' || Element.prototype.matches.call(host, sel) });
     app = start(document, fakeWin(PERF), { frame: now, delay: 0 });
     await wait(20);
-    expect(document.querySelector('[data-scpc="strip"]')).toBeNull();
+    expect(document.querySelector('[data-scpc="strip"]').getAttribute('aria-busy')).toBe('true');
+    expect(document.querySelectorAll('[data-scpc="strip"] rect')).toHaveLength(0);
     Object.defineProperty(host, 'matches', { configurable: true, value: sel => Element.prototype.matches.call(host, sel) });
     host.dispatchEvent(new MouseEvent('mouseleave'));
     await wait(20);
@@ -88,24 +89,14 @@ describe('start', () => {
 const hovering = (host, on) => Object.defineProperty(host, 'matches', { configurable: true, value: sel => (on && sel === ':hover') || Element.prototype.matches.call(host, sel) });
 
 describe('start, fixes', () => {
-  it('removes the strip when the chart changes, instead of leaving the old days under the new chart', async () => {
-    const { host, svg } = buildPage();
-    app = start(document, fakeWin(PERF), { frame: now, delay: 0 });
-    await wait(20);
-    expect(document.querySelector('[data-scpc="strip"]')).not.toBeNull();
-    hovering(host, true);
-    svg.querySelector('path').setAttribute('d', 'M0,0L5,5');
-    await wait(20);
-    expect(document.querySelector('[data-scpc="strip"]')).toBeNull();
-  });
-
   it('stops a sweep when the pointer arrives mid-way, and resumes after mouseleave', async () => {
     const { host } = buildPage();
     let n = 0;
     const frame = async () => { if (++n === 2) hovering(host, true); };
     app = start(document, fakeWin(PERF), { frame, delay: 0 });
     await wait(30);
-    expect(document.querySelector('[data-scpc="strip"]')).toBeNull();
+    expect(document.querySelector('[data-scpc="strip"]').getAttribute('aria-busy')).toBe('true');
+    expect(document.querySelectorAll('[data-scpc="strip"] rect')).toHaveLength(0);
     hovering(host, false);
     host.dispatchEvent(new MouseEvent('mouseleave'));
     await wait(30);
@@ -187,5 +178,94 @@ describe('start, fixes', () => {
     await wait(20);
     expect(document.querySelector('[data-scpc="strip"]')).toBeNull();
     expect(document.querySelectorAll('[data-scpc="pill"]').length).toBe(12);
+  });
+});
+
+describe('start, cache and loading', () => {
+  const counting = () => {
+    const calls = { n: 0 };
+    return { calls, frame: async () => { calls.n++; } };
+  };
+
+  it('does not read the days again when a drawn metric is unchecked, and still offers it', async () => {
+    buildPage();
+    const { calls, frame } = counting();
+    app = start(document, fakeWin(PERF), { frame, delay: 0 });
+    await wait(30);
+    expect(calls.n).toBe(3);
+    buildPage({ drawn: ['CLICKS'] });
+    await wait(30);
+    expect(calls.n).toBe(3);
+    const strip = document.querySelector('[data-scpc="strip"]');
+    expect(strip.hasAttribute('aria-busy')).toBe(false);
+    expect(strip.querySelectorAll('rect[data-scpc-tone]')).toHaveLength(3);
+    expect([...strip.querySelectorAll('option')].map(o => o.value)).toEqual(['CLICKS', 'IMPRESSIONS']);
+  });
+
+  it('reads again for a metric that was never read, and merges it', async () => {
+    buildPage({ drawn: ['CLICKS'] });
+    const { calls, frame } = counting();
+    app = start(document, fakeWin(PERF), { frame, delay: 0 });
+    await wait(30);
+    expect(calls.n).toBe(3);
+    buildPage({ drawn: ['CLICKS', 'IMPRESSIONS'] });
+    await wait(30);
+    expect(calls.n).toBe(6);
+    buildPage({ drawn: ['IMPRESSIONS'] });
+    await wait(30);
+    expect(calls.n).toBe(6);
+    expect([...document.querySelectorAll('[data-scpc="strip"] option')].map(o => o.value)).toEqual(['CLICKS', 'IMPRESSIONS']);
+  });
+
+  it('starts a new cache when the report\'s data changes, ignoring the metrics parameter and the order', async () => {
+    buildPage();
+    const { calls, frame } = counting();
+    const win = fakeWin(PERF);
+    app = start(document, win, { frame, delay: 0 });
+    await wait(30);
+    expect(calls.n).toBe(3);
+    win.location = new URL('https://search.google.com/search-console/performance/search-analytics?compare_date=PREV&metrics=CLICKS&resource_id=x');
+    document.body.append(document.createElement('div'));
+    await wait(30);
+    expect(calls.n).toBe(3);
+    win.location = new URL(`${PERF}&query=abc`);
+    document.body.append(document.createElement('div'));
+    await wait(30);
+    expect(calls.n).toBe(6);
+  });
+
+  it('shows a loading state, with no bars from the previous key, while the days are read', async () => {
+    buildPage();
+    app = start(document, fakeWin(PERF), { frame: now, delay: 0 });
+    await wait(30);
+    expect(document.querySelectorAll('[data-scpc="strip"] rect[data-scpc-tone]')).toHaveLength(3);
+    let release;
+    const gate = new Promise(r => { release = r; });
+    app.stop();
+    buildPage();
+    const win = fakeWin(`${PERF}&query=abc`);
+    app = start(document, win, { frame: () => gate, delay: 0 });
+    await wait(30);
+    const strip = document.querySelector('[data-scpc="strip"]');
+    expect(strip.getAttribute('aria-busy')).toBe('true');
+    expect(strip.querySelector('select').disabled).toBe(true);
+    expect(strip.textContent).toContain('Reading the days…');
+    expect(strip.querySelectorAll('rect')).toHaveLength(0);
+    release();
+    await wait(30);
+    expect(document.querySelector('[data-scpc="strip"]').hasAttribute('aria-busy')).toBe(false);
+    expect(document.querySelectorAll('[data-scpc="strip"] rect[data-scpc-tone]')).toHaveLength(3);
+  });
+
+  it('repaints when the chart is resized, because the bars move', async () => {
+    const { svg } = buildPage();
+    app = start(document, fakeWin(PERF), { frame: now, delay: 0 });
+    await wait(30);
+    const first = document.querySelector('[data-scpc="strip"] svg');
+    expect(first.getAttribute('width')).toBe('751');
+    svg.setAttribute('width', '600');
+    svg.querySelectorAll('path[stroke-dasharray="null"]').forEach(path => path.setAttribute('d', 'M12,50L30,51L50,52'));
+    await wait(30);
+    expect(document.querySelector('[data-scpc="strip"] svg')).not.toBe(first);
   });
 });
