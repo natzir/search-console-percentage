@@ -12,7 +12,9 @@ export function parseLine(text, lang) {
   const cut = body.lastIndexOf(' : ');
   const colon = body.indexOf(': ');
   if (cut < 0 || colon < 0 || colon >= cut) return null;
-  return { date: body.slice(colon + 2, cut).trim(), value: parseNumber(body.slice(cut + 3), lang) };
+  // A word instead of a number ("none") is a period without impressions: 0, as the table writes it.
+  const value = body.slice(cut + 3).trim();
+  return { date: body.slice(colon + 2, cut).trim(), value: /^\p{L}[\p{L} ]*$/u.test(value) ? 0 : parseNumber(value, lang) };
 }
 
 export function readPoint(lines, keys, lang) {

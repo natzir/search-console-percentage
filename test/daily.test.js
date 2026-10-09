@@ -17,6 +17,11 @@ describe('parseLine', () => {
     expect(parseLine('. CTR: jue, 10 sept 2026 : 0,7 % ,', 'es')).toEqual({ date: 'jue, 10 sept 2026', value: 0.7 });
     expect(parseLine('Day 2', 'en')).toBeNull();
   });
+
+  it('reads a value written as a word, as Google writes the position of a period without impressions, as 0', () => {
+    expect(parseLine('. Position: Wed, Aug 12, 2026\n            : none .', 'en')).toEqual({ date: 'Wed, Aug 12, 2026', value: 0 });
+    expect(parseLine('. Posición: mié, 12 ago 2026 : ninguna .', 'es')).toEqual({ date: 'mié, 12 ago 2026', value: 0 });
+  });
 });
 
 describe('readPoint', () => {
