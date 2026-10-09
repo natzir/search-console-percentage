@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { start } from '../src/app.js';
-import { buildPage } from './helpers/gsc.js';
+import { buildPage, DAYS } from './helpers/gsc.js';
 
 const PERF = 'https://search.google.com/search-console/performance/search-analytics?resource_id=x&compare_date=PREV';
 const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -267,5 +267,101 @@ describe('start, cache and loading', () => {
     svg.querySelectorAll('path[stroke-dasharray="null"]').forEach(path => path.setAttribute('d', 'M12,50L30,51L50,52'));
     await wait(30);
     expect(document.querySelector('[data-scpc="strip"] svg')).not.toBe(first);
+  });
+
+  // Same dates and count, different numbers: what a new filter's data looks like.
+  const NEW = DAYS.map((d, i) => ({ ...d, CLICKS: [[5, 2], [2, 10], [0, 4]][i], IMPRESSIONS: [[2, 1], [1, 2], [1, 3]][i] }));
+  const tones = () => [...document.querySelectorAll('[data-scpc="strip"] rect[data-scpc-tone]')].map(r => r.getAttribute('data-scpc-tone'));
+  const gated = () => {
+    const g = { gate: null, frame: () => g.gate ?? Promise.resolve() };
+    g.hold = () => { g.gate = new Promise(r => { g.release = () => { g.gate = null; r(); }; }); };
+    return g;
+  };
+
+  it('never keeps the old bars when the URL changes first and the new data arrives later', async () => {
+    buildPage();
+    const g = gated();
+    const win = fakeWin(PERF);
+    app = start(document, win, { frame: g.frame, delay: 0 });
+    await wait(30);
+    expect(tones()).toEqual(['worse', 'better', 'new']);
+    win.location = new URL(`${PERF}&query=abc`);
+    document.body.append(document.createElement('div'));
+    await wait(30);
+    g.hold();
+    buildPage({ days: NEW });
+    await wait(30);
+    const strip = document.querySelector('[data-scpc="strip"]');
+    expect(strip.getAttribute('aria-busy')).toBe('true');
+    expect(tones()).toEqual([]);
+    g.release();
+    await wait(30);
+    expect(tones()).toEqual(['better', 'worse', 'worse']);
+  });
+
+  it('never keeps the old bars when the data changes under the same URL', async () => {
+    buildPage();
+    app = start(document, fakeWin(PERF), { frame: now, delay: 0 });
+    await wait(30);
+    buildPage({ days: NEW });
+    await wait(30);
+    expect(tones()).toEqual(['better', 'worse', 'worse']);
+  });
+
+  it('shows the loading state, with no bars, from a key change until the read finishes', async () => {
+    buildPage();
+    const g = gated();
+    const win = fakeWin(PERF);
+    app = start(document, win, { frame: g.frame, delay: 0 });
+    await wait(30);
+    g.hold();
+    win.location = new URL(`${PERF}&query=abc`);
+    document.body.append(document.createElement('div'));
+    await wait(30);
+    expect(document.querySelector('[data-scpc="strip"]').getAttribute('aria-busy')).toBe('true');
+    expect(tones()).toEqual([]);
+    g.release();
+    await wait(30);
+    expect(tones()).toEqual(['worse', 'better', 'new']);
+  });
+
+  it('does not write what it read if the page moved on during the sweep', async () => {
+    buildPage();
+    const g = gated();
+    g.hold();
+    const win = fakeWin(PERF);
+    app = start(document, win, { frame: g.frame, delay: 0 });
+    await wait(30);
+    win.location = new URL(`${PERF}&query=abc`);
+    buildPage({ days: NEW });
+    g.release();
+    await wait(60);
+    expect(tones()).toEqual(['better', 'worse', 'worse']);
+  });
+
+  it('does not re-read when switching table tabs (breakdown) or reordering parameters', async () => {
+    buildPage();
+    const { calls, frame } = counting();
+    const win = fakeWin(`${PERF}&breakdown=query`);
+    app = start(document, win, { frame, delay: 0 });
+    await wait(30);
+    win.location = new URL('https://search.google.com/search-console/performance/search-analytics?compare_date=PREV&breakdown=page&resource_id=x');
+    document.body.append(document.createElement('div'));
+    await wait(30);
+    expect(calls.n).toBe(3);
+  });
+
+  it('keeps focus on the select after choosing a metric', async () => {
+    buildPage();
+    app = start(document, fakeWin(PERF), { frame: now, delay: 0 });
+    await wait(30);
+    const select = document.querySelector('[data-scpc="strip"] select');
+    select.focus();
+    select.value = 'IMPRESSIONS';
+    select.dispatchEvent(new Event('change'));
+    await wait(5);
+    const fresh = document.querySelector('[data-scpc="strip"] select');
+    expect(fresh).not.toBe(select);
+    expect(document.activeElement).toBe(fresh);
   });
 });

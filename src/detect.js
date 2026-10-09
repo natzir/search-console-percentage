@@ -53,6 +53,20 @@ export function findCards(doc, lang) {
 
 export const pathXs = d => (String(d).match(/[ML]\s*-?[\d.]+/g) ?? []).map(s => Number(s.slice(1)));
 
+// Each drawn metric's y-coordinates, solid and dashed lines: they change when the numbers change, not
+// when other metrics are toggled.
+export const pathYs = d => [...String(d).matchAll(/[ML]\s*-?[\d.]+[\s,]+(-?[\d.]+)/g)].map(m => m[1]).join(',');
+export function fingerprints(svg) {
+  const out = {};
+  for (const path of svg.querySelectorAll('path[stroke]')) {
+    const key = STROKES[path.getAttribute('stroke').toLowerCase()];
+    if (!key) continue;
+    const dashed = /\d/.test(path.getAttribute('stroke-dasharray') ?? '');
+    out[key] = `${out[key] ?? ''}${dashed ? 'D' : 'S'}${pathYs(path.getAttribute('d'))};`;
+  }
+  return out;
+}
+
 // Changes when the chart's data or size changes, not when Google's hover marks move.
 export const signature = svg => [...svg.querySelectorAll('path[stroke]')].map(p => `${p.getAttribute('stroke')}:${p.getAttribute('d')}`).join('|');
 
@@ -78,7 +92,7 @@ export function findChart(doc) {
       xs ??= pathXs(path.getAttribute('d'));
     }
     if (drawn.length && xs?.length) {
-      return { host, svg, plotX: Number(offset[1]), plotY: Number(offset[2]), xs, drawn: drawn.sort(byOrder), compare, signature: signature(svg) };
+      return { host, svg, plotX: Number(offset[1]), plotY: Number(offset[2]), xs, drawn: drawn.sort(byOrder), compare, signature: signature(svg), fingerprints: fingerprints(svg) };
     }
   }
   return null;

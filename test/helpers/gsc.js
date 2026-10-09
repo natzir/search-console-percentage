@@ -69,7 +69,8 @@ export function buildPage({ lang = EN, metrics = ORDER, drawn = ['CLICKS', 'IMPR
   }).join('');
 
   const xs = days.map((_, i) => 12 + i * 24.6);
-  const path = (key, dashed) => `<path stroke="${STROKES[key]}" stroke-dasharray="${dashed ? '4, 4' : 'null'}" d="${xs.map((x, i) => `${i ? 'L' : 'M'}${x},${50 + i}`).join('')}"></path><path stroke="transparent" d="M0,0"></path>`;
+  // y follows the data, as in Google's chart, so a chart with other numbers has other coordinates.
+  const path = (key, dashed) => `<path stroke="${STROKES[key]}" stroke-dasharray="${dashed ? '4, 4' : 'null'}" d="${xs.map((x, i) => `${i ? 'L' : 'M'}${x},${150 - Math.min(days[i][key][dashed ? 1 : 0], 20) * 5 + i}`).join('')}"></path><path stroke="transparent" d="M0,0"></path>`;
   const lines = [...drawn].reverse().map(key => (compare ? path(key, true) : '') + path(key, false)).join('');
 
   doc.body.innerHTML = `

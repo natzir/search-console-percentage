@@ -84,7 +84,8 @@ describe('renderStrip', () => {
     const { chart, points } = await setup();
     const strip = renderStrip(document, chart, points, { key: 'CLICKS', labels: LABELS, lang: 'en', onSelect() {} });
     const tip = strip.querySelector('.scpc-tip');
-    expect(tip.getAttribute('role')).toBe('tooltip');
+    expect(tip.getAttribute('aria-hidden')).toBe('true');
+    expect(tip.hasAttribute('role')).toBe(false);
     expect(tip.hidden).toBe(true);
     strip.querySelectorAll('rect[data-scpc-tone]')[1].dispatchEvent(new Event('pointerover', { bubbles: true }));
     expect(tip.hidden).toBe(false);
@@ -106,7 +107,7 @@ describe('renderStrip', () => {
     expect(plot.getAttribute('tabindex')).toBe('0');
     expect(plot.getAttribute('role')).toBe('group');
     expect(plot.getAttribute('aria-roledescription')).toBe('bar chart');
-    expect(plot.getAttribute('aria-label')).toBe('Change by date, Total clicks: 1 days better, 1 worse, 1 new. Use the left and right arrow keys to read each day.');
+    expect(plot.getAttribute('aria-label')).toBe('Change by date, Total clicks: 1 day better, 1 day worse, 1 new. Use the left and right arrow keys to read each day.');
     expect(strip.querySelector('svg').getAttribute('aria-hidden')).toBe('true');
     plot.dispatchEvent(new Event('focus'));
     expect(strip.querySelector('.scpc-tip').hidden).toBe(false);
@@ -142,5 +143,31 @@ describe('renderStrip', () => {
     const { chart, points } = await setup();
     const strip = renderStrip(document, chart, points, { key: 'CLICKS', keys: ['CLICKS', 'IMPRESSIONS', 'CTR'], labels: LABELS, lang: 'en', onSelect() {} });
     expect([...strip.querySelectorAll('option')].map(o => o.value)).toEqual(['CLICKS', 'IMPRESSIONS', 'CTR']);
+  });
+
+  it('keeps focus and the active bar when it repaints', async () => {
+    const { chart, points } = await setup();
+    const opts = { key: 'CLICKS', labels: LABELS, lang: 'en', onSelect() {} };
+    renderStrip(document, chart, points, opts);
+    const select = document.querySelector('[data-scpc="strip"] select');
+    select.focus();
+    renderStrip(document, chart, points, opts);
+    const fresh = document.querySelector('[data-scpc="strip"] select');
+    expect(fresh).not.toBe(select);
+    expect(document.activeElement).toBe(fresh);
+    const plot = document.querySelector('.scpc-plot');
+    plot.focus();
+    plot.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true }));
+    renderStrip(document, chart, points, opts);
+    const again = document.querySelector('.scpc-plot');
+    expect(document.activeElement).toBe(again);
+    expect(again.querySelector('rect[stroke="#1f1f1f"]').getAttribute('data-scpc-tone')).toBe('better');
+    expect(document.querySelector('.scpc-tip').hidden).toBe(false);
+  });
+
+  it('pluralises the summary', async () => {
+    const { chart, points } = await setup();
+    const strip = renderStrip(document, chart, [points[0], points[0], points[1]], { key: 'CLICKS', labels: LABELS, lang: 'en', onSelect() {} });
+    expect(strip.querySelector('.scpc-plot').getAttribute('aria-label')).toContain('1 day better, 2 days worse, 0 new');
   });
 });

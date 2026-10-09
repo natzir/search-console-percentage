@@ -41,8 +41,11 @@ export function start(doc, win, { storage, frame, delay = 200 } = {}) {
 
   // The report's data: the page and its filters and dates (not which metrics are drawn), and its size.
   const cacheKey = chart => {
-    const params = [...new URLSearchParams(win.location.search)].filter(([k]) => k !== 'metrics').sort((a, b) => (a[0] + a[1] < b[0] + b[1] ? -1 : 1));
-    return `${win.location.pathname}?${new URLSearchParams(params)}|${chart.xs.length}`;
+    const params = new URLSearchParams(win.location.search);
+    params.delete('metrics');
+    params.delete('breakdown');
+    params.sort();
+    return `${win.location.pathname}?${params}|${chart.xs.length}`;
   };
   const cachedKeys = chart => {
     const keys = METRICS.filter(k => cache.points.some(p => p?.[k]));
@@ -96,6 +99,7 @@ export function start(doc, win, { storage, frame, delay = 200 } = {}) {
     };
     sweeping = true;
     const target = cache;
+    const startSignature = chart.signature;
     let points;
     try {
       points = await sweep(chart, l, { ...(frame ? { frame } : {}), abort });
@@ -114,9 +118,12 @@ export function start(doc, win, { storage, frame, delay = 200 } = {}) {
       return;
     }
     fails = 0;
-    if (cache !== target) return schedule();
+    // Only what was read from the very chart and data the cache is for.
+    const now = findChart(doc);
+    if (!now || now.signature !== startSignature || cacheKey(now) !== target.key) return schedule();
     for (const k of chart.drawn) {
       target.read.add(k);
+      target.fingerprints[k] = chart.fingerprints[k];
       points.forEach((point, i) => {
         if (point?.[k]) target.points[i] = { ...target.points[i], [k]: point[k] };
       });
@@ -145,7 +152,11 @@ export function start(doc, win, { storage, frame, delay = 200 } = {}) {
     annotateCards(cards, l);
     if (!chart?.compare) return removeStrips();
     const dataKey = cacheKey(chart);
-    if (cache?.key !== dataKey) cache = { key: dataKey, points: [], read: new Set() };
+    if (cache?.key !== dataKey) cache = { key: dataKey, points: [], read: new Set(), fingerprints: {} };
+    // Numbers that are no longer the ones that were read (a filter applied, fresh data): read them all again.
+    if (chart.drawn.some(k => cache.read.has(k) && cache.fingerprints[k] !== chart.fingerprints[k])) {
+      cache = { key: dataKey, points: [], read: new Set(), fingerprints: {} };
+    }
     if (chart.drawn.every(k => cache.read.has(k))) return paint(chart, l);
     if (blocked !== null) {
       if (chart.signature === blocked) return removeStrips();

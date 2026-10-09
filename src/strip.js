@@ -108,8 +108,9 @@ function bars(doc, chart, points, key, labels, lang) {
 
 function summary(items, key, labels) {
   const n = tone => items.filter(item => item.tone === tone).length;
+  const days = tone => `${n(tone)} ${n(tone) === 1 ? 'day' : 'days'}`;
   const flat = n('flat') ? `, ${n('flat')} no change` : '';
-  return `Change by date, ${labels[key] ?? key}: ${n('better')} days better, ${n('worse')} worse, ${n('new')} new${flat}. Use the left and right arrow keys to read each day.`;
+  return `Change by date, ${labels[key] ?? key}: ${days('better')} better, ${days('worse')} worse, ${n('new')} new${flat}. Use the left and right arrow keys to read each day.`;
 }
 
 function ensureBox(doc, chart) {
@@ -147,6 +148,9 @@ export function renderLoading(doc, chart, { key, keys = chart.drawn, labels, lan
 
 export function renderStrip(doc, chart, points, { key, keys = chart.drawn, labels, lang, onSelect }) {
   const box = ensureBox(doc, chart);
+  const had = doc.activeElement && box.contains(doc.activeElement) ? doc.activeElement : null;
+  const refocus = { select: had?.tagName === 'SELECT', plot: had?.classList.contains('scpc-plot') };
+  const before = Number(box.querySelector('.scpc-plot rect[stroke]')?.getAttribute('data-i') ?? -1);
   const { svg, items } = bars(doc, chart, points, key, labels, lang);
   const head = header(doc, keys, key, labels, { onSelect });
   const plot = html(doc, 'div', 'scpc-plot');
@@ -156,7 +160,7 @@ export function renderStrip(doc, chart, points, { key, keys = chart.drawn, label
   plot.setAttribute('aria-label', summary(items, key, labels));
   plot.append(svg);
   const tip = html(doc, 'div', 'scpc-tip');
-  tip.setAttribute('role', 'tooltip');
+  tip.setAttribute('aria-hidden', 'true'); // the live region is what is announced
   tip.hidden = true;
   const live = html(doc, 'div', 'scpc-live');
   live.setAttribute('aria-live', 'polite');
@@ -227,5 +231,10 @@ export function renderStrip(doc, chart, points, { key, keys = chart.drawn, label
     event.preventDefault();
     show(target, true);
   });
+  if (refocus.select) head.querySelector('select').focus();
+  if (refocus.plot) {
+    if (items[before]) show(before, false);
+    plot.focus();
+  }
   return box;
 }
