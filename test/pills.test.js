@@ -66,10 +66,29 @@ describe('annotateCards', () => {
     expect([...document.querySelectorAll('[data-scpc="card-pill"]')].map(p => p.textContent)).toEqual([
       '▲ +80 · +47.6%',
       '▼ -31,207 · -47.1%',
-      '▲ +0.4 pp · +133%',
+      '▲ +0.5 pp · +179%',
       '▲ +1.0 · +7.6%',
     ]);
     for (const card of cards) expect(card.el.querySelector('[data-scpc="card-pill"]').parentElement).toBe(card.el.querySelector('[title]').parentElement);
+  });
+
+  it('works the CTR card out from the clicks and impressions totals, not its rounded title', () => {
+    // 248 / 35,005 = 0.708 % and 168 / 66,212 = 0.254 %; the titles say 0.7 % and 0.3 %.
+    buildPage();
+    annotateCards(findCards(document, 'en'), 'en');
+    const ctr = document.querySelector('[data-label="CTR"] [data-scpc="card-pill"]');
+    expect(ctr.textContent).toBe('▲ +0.5 pp · +179%');
+    expect(ctr.className).toContain('scpc-better');
+  });
+
+  it('falls back to the CTR card\'s title without both the clicks and impressions cards', () => {
+    buildPage({ metrics: ['CTR', 'POSITION'] });
+    annotateCards(findCards(document, 'en'), 'en');
+    expect(document.querySelector('[data-label="CTR"] [data-scpc="card-pill"]').textContent).toBe('▲ +0.4 pp · +133%');
+    document.body.innerHTML = '';
+    buildPage({ metrics: ['CLICKS', 'CTR'] });
+    annotateCards(findCards(document, 'en'), 'en');
+    expect(document.querySelector('[data-label="CTR"] [data-scpc="card-pill"]').textContent).toBe('▲ +0.4 pp · +133%');
   });
 
   it('turns the pill white on a card filled with its metric colour', () => {

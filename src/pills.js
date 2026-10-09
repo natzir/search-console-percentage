@@ -38,13 +38,27 @@ const onColour = el => {
   return Boolean(bg) && !/^(rgba?\(255, 255, 255(, 1)?\)|rgba\(0, 0, 0, 0\)|transparent)$/.test(bg);
 };
 
+// The CTR card's title is rounded to one decimal ("0.7%"); each period's CTR is exactly its clicks over
+// its impressions. Null when either card is missing or a period has no impressions.
+function exactCtr(cards) {
+  const clicks = cards.find(card => card.key === 'CLICKS');
+  const impressions = cards.find(card => card.key === 'IMPRESSIONS');
+  if (!clicks || !impressions) return null;
+  const ctr = (c, i) => (i > 0 ? (c / i) * 100 : NaN);
+  const last = ctr(clicks.last, impressions.last);
+  const previous = ctr(clicks.previous, impressions.previous);
+  return Number.isFinite(last) && Number.isFinite(previous) ? { last, previous } : null;
+}
+
 export function annotateCards(cards, lang) {
+  const ctr = exactCtr(cards);
   for (const card of cards) {
-    if (!Number.isFinite(card.last) || !Number.isFinite(card.previous)) continue;
-    const c = change(card.key, card.last, card.previous);
+    const { last, previous } = card.key === 'CTR' && ctr ? ctr : card;
+    if (!Number.isFinite(last) || !Number.isFinite(previous)) continue;
+    const c = change(card.key, last, previous);
     const coloured = onColour(card.el);
     const target = card.el.querySelector('[title]')?.parentElement ?? card.el.querySelector('[role="button"]') ?? card.el;
-    place(target, 'card-pill', `${card.last}|${card.previous}|${lang}|${coloured}`, () => {
+    place(target, 'card-pill', `${last}|${previous}|${lang}|${coloured}`, () => {
       const pill = pillElement(card.el.ownerDocument, cardLabel(card.key, c, lang), c.tone, 'card-pill');
       pill.classList.add('scpc-card-pill');
       if (coloured) pill.classList.add('scpc-on-colour');
