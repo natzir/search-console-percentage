@@ -12,6 +12,12 @@ const metricName = th => (th.getAttribute('data-name') ?? th.textContent).split(
 // A text cell that starts like a formula would be run as one by Excel and Sheets: a query "+500 euros"
 // or "=HYPERLINK(...)" gets a leading apostrophe, which the spreadsheet hides.
 const safeText = text => (/^[=+\-@\t\r]/.test(text) ? `'${text}` : text);
+// A page's cell also holds Google's Copy URL, Open and Inspect URL buttons and their tooltips.
+const cellText = cell => {
+  const copy = cell.cloneNode(true);
+  copy.querySelectorAll('button, [role="tooltip"]').forEach(el => el.remove());
+  return copy.textContent.replace(/\s+/g, ' ').trim();
+};
 
 export function tableCsv({ table, metrics }, lang = 'en') {
   const comma = separators(lang).decimal === ',';
@@ -31,7 +37,7 @@ export function tableCsv({ table, metrics }, lang = 'en') {
         const value = numeric(cell);
         out.push(Number.isNaN(value) ? '' : decimal(String(value)));
       } else {
-        out.push(safeText(cell.textContent.replace(/\s+/g, ' ').trim()));
+        out.push(safeText(cellText(cell)));
       }
       const metric = byDiff.get(i);
       if (metric) {

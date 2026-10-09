@@ -77,6 +77,15 @@ describe('tableCsv', () => {
     expect(tableCsv(findTable(document)).split('\r\n')[1]).toBe('blue widgets,30,28,-2,,1.1,3.5,-2.43,-68.57');
   });
 
+  it('writes a page as its URL, without the labels of the buttons Google puts beside it', () => {
+    buildPage({ metrics: ['CLICKS'] });
+    document.querySelector('tbody tr').cells[0].innerHTML =
+      '<span><span>https://example.com/blue/<div><div><span><button aria-label=" Copy URL "><span aria-hidden="true"><svg></svg></span></button>' +
+      '<div role="tooltip" aria-hidden="true">Copy URL</div></span></div><div><span><button aria-label=" Inspect URL "></button>' +
+      '<div role="tooltip" aria-hidden="true">Inspect URL</div></span></div></div></span></span>';
+    expect(tableCsv(findTable(document)).split('\r\n')[1]).toBe('https://example.com/blue/,30,28,2,7.14');
+  });
+
   it('leaves a missing number empty instead of writing NaN', () => {
     buildPage({ metrics: ['CLICKS'] });
     document.querySelector('tbody tr').cells[2].removeAttribute('data-numeric-value');
