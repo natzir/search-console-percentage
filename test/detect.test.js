@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from 'vitest';
-import { findCards, findChart, findTable, pathXs, readRows, signature } from '../src/detect.js';
+import { fingerprints, findCards, findChart, findTable, pathXs, pathYs, readRows, signature } from '../src/detect.js';
 import { ES, buildPage } from './helpers/gsc.js';
 
 afterEach(() => {
@@ -108,5 +108,20 @@ describe('hidden earlier views', () => {
     expect(chart.host).toBe(host);
     expect(chart.xs).toEqual(expected);
     expect(findCards(document, 'en').map(c => c.last)).toEqual([248, 35005, 0.7, 14.2]);
+  });
+});
+
+describe('fingerprints', () => {
+  const D = 'M12,57.01546666666667L36.592592592592595,42.407466666666664L61.18518518518518,44.84213333333334';
+  it('reads the y of every point from Google\'s real path format', () => {
+    expect(pathYs(D)).toBe('57.01546666666667,42.407466666666664,44.84213333333334');
+  });
+  it('does not depend on the order of the solid and dashed paths', () => {
+    const one = document.createElement('div');
+    const mk = order => {
+      one.innerHTML = `<svg>${order.map(dashed => `<path stroke="#4285F4" stroke-dasharray="${dashed ? '4, 4' : 'null'}" d="${dashed ? 'M0,1L1,2' : D}"></path>`).join('')}</svg>`;
+      return fingerprints(one.querySelector('svg')).CLICKS;
+    };
+    expect(mk([true, false])).toBe(mk([false, true]));
   });
 });

@@ -10,13 +10,15 @@ import { renderLoading, renderStrip } from './strip.js';
 const PERFORMANCE = /\/search-console\/performance\//;
 const ours = node => node.nodeType === 1 && (node.hasAttribute('data-scpc') || node.closest?.('[data-scpc]'));
 
-export function start(doc, win, { storage, frame, delay = 200 } = {}) {
+export function start(doc, win, { storage, frame, delay = 200, settle = 400, patience = 5000 } = {}) {
   let enabled = true;
   let timer = null;
   let sweeping = false;
   // What was read for the report's current data: per point, per metric. { key, points, read: Set }
   let cache = null;
   let lastChart = null;
+  let seen = null; // { signature, at }: the chart as the last draw saw it
+  let keyWait = null; // { signature, at }: the URL changed, Google may still show the old chart
   let stopped = false;
   let pending = false; // a draw arrived while sweeping
   let fails = 0; // consecutive sweeps the chart changed under
@@ -29,6 +31,8 @@ export function start(doc, win, { storage, frame, delay = 200 } = {}) {
 
   const clear = () => {
     removeAll(doc);
+    seen = null;
+    keyWait = null;
   };
 
   const exportCsv = () => {
@@ -117,10 +121,14 @@ export function start(doc, win, { storage, frame, delay = 200 } = {}) {
       else schedule();
       return;
     }
-    fails = 0;
     // Only what was read from the very chart and data the cache is for.
     const now = findChart(doc);
-    if (!now || now.signature !== startSignature || cacheKey(now) !== target.key) return schedule();
+    if (!now || now.signature !== startSignature || cacheKey(now) !== target.key) {
+      if (++fails >= 3) blocked = now?.signature ?? chart.signature;
+      else schedule();
+      return;
+    }
+    fails = 0;
     for (const k of chart.drawn) {
       target.read.add(k);
       target.fingerprints[k] = chart.fingerprints[k];
@@ -152,7 +160,28 @@ export function start(doc, win, { storage, frame, delay = 200 } = {}) {
     annotateCards(cards, l);
     if (!chart?.compare) return removeStrips();
     const dataKey = cacheKey(chart);
-    if (cache?.key !== dataKey) cache = { key: dataKey, points: [], read: new Set(), fingerprints: {} };
+    const t = Date.now();
+    const unchanged = seen?.signature === chart.signature;
+    if (!unchanged) seen = { signature: chart.signature, at: t };
+    if (cache?.key !== dataKey) {
+      // Same page and chart size but other filters or dates: Google still shows the old chart until it has fetched the new one.
+      const waits = cache && cache.key.split('|').pop() === dataKey.split('|').pop();
+      cache = { key: dataKey, points: [], read: new Set(), fingerprints: {} };
+      keyWait = waits ? { signature: chart.signature, at: t } : null;
+    }
+    if (keyWait) {
+      const left = patience - (t - keyWait.at);
+      if (chart.signature === keyWait.signature && left > 0) {
+        loading(chart, l);
+        return schedule(left);
+      }
+      keyWait = null;
+    }
+    // Only compare or read a chart that has stopped moving (Google animates lines after a toggle).
+    if (!unchanged || t - seen.at < settle) {
+      schedule(unchanged ? settle - (t - seen.at) : settle);
+      return chart.drawn.every(k => cache.read.has(k)) ? paint(chart, l) : loading(chart, l);
+    }
     // Numbers that are no longer the ones that were read (a filter applied, fresh data): read them all again.
     if (chart.drawn.some(k => cache.read.has(k) && cache.fingerprints[k] !== chart.fingerprints[k])) {
       cache = { key: dataKey, points: [], read: new Set(), fingerprints: {} };
@@ -167,8 +196,14 @@ export function start(doc, win, { storage, frame, delay = 200 } = {}) {
     readDays(chart, l).catch(error => console.error('[Search Console Percentage Calculator]', error));
   };
 
-  const schedule = () => {
-    if (timer === null) timer = setTimeout(draw, delay);
+  // A sooner draw replaces a later one that was waiting (a change must not sit behind a long wait).
+  let due = 0;
+  const schedule = (ms = delay) => {
+    const at = Date.now() + ms;
+    if (timer !== null && at >= due) return;
+    clearTimeout(timer);
+    due = at;
+    timer = setTimeout(draw, ms);
   };
 
   const observer = new MutationObserver(records => {

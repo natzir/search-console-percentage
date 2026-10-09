@@ -58,14 +58,14 @@ export const pathXs = d => (String(d).match(/[ML]\s*-?[\d.]+/g) ?? []).map(s => 
 // when other metrics are toggled.
 export const pathYs = d => [...String(d).matchAll(/[ML]\s*-?[\d.]+[\s,]+(-?[\d.]+)/g)].map(m => m[1]).join(',');
 export function fingerprints(svg) {
-  const out = {};
+  const parts = {};
   for (const path of svg.querySelectorAll('path[stroke]')) {
     const key = STROKES[path.getAttribute('stroke').toLowerCase()];
     if (!key) continue;
     const dashed = /\d/.test(path.getAttribute('stroke-dasharray') ?? '');
-    out[key] = `${out[key] ?? ''}${dashed ? 'D' : 'S'}${pathYs(path.getAttribute('d'))};`;
+    (parts[key] ??= []).push(`${dashed ? 'D' : 'S'}${pathYs(path.getAttribute('d'))}`);
   }
-  return out;
+  return Object.fromEntries(Object.entries(parts).map(([key, list]) => [key, list.sort().join(';')]));
 }
 
 // Changes when the chart's data or size changes, not when Google's hover marks move.

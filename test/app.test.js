@@ -18,8 +18,8 @@ afterEach(() => {
 describe('start', () => {
   it('adds the pills, the card pills, the export button and the strip by itself', async () => {
     buildPage();
-    app = start(document, fakeWin(PERF), { storage: memoryStorage(), frame: now, delay: 0 });
-    await wait(20);
+    app = start(document, fakeWin(PERF), { storage: memoryStorage(), frame: now, delay: 0, settle: 0, patience: 15 });
+    await wait(60);
     expect(document.querySelectorAll('[data-scpc="pill"]').length).toBe(12);
     expect(document.querySelectorAll('[data-scpc="card-pill"]').length).toBe(4);
     expect(document.querySelector('[data-scpc="toolbar"]')).not.toBeNull();
@@ -28,19 +28,19 @@ describe('start', () => {
 
   it('does nothing outside Performance, or when the report is not comparing', async () => {
     buildPage();
-    app = start(document, fakeWin('https://search.google.com/search-console/inspect?resource_id=x'), { frame: now, delay: 0 });
+    app = start(document, fakeWin('https://search.google.com/search-console/inspect?resource_id=x'), { frame: now, delay: 0, settle: 0, patience: 15 });
     await wait(20);
     expect(document.querySelectorAll('[data-scpc]')).toHaveLength(0);
     app.stop();
     buildPage({ compare: false });
-    app = start(document, fakeWin(PERF), { frame: now, delay: 0 });
+    app = start(document, fakeWin(PERF), { frame: now, delay: 0, settle: 0, patience: 15 });
     await wait(20);
     expect(document.querySelectorAll('[data-scpc]')).toHaveLength(0);
   });
 
   it('removes everything when comparison is turned off', async () => {
     buildPage();
-    app = start(document, fakeWin(PERF), { frame: now, delay: 0 });
+    app = start(document, fakeWin(PERF), { frame: now, delay: 0, settle: 0, patience: 15 });
     await wait(20);
     buildPage({ compare: false });
     await wait(20);
@@ -49,7 +49,7 @@ describe('start', () => {
 
   it('turns off and on with the icon', async () => {
     buildPage();
-    app = start(document, fakeWin(PERF), { frame: now, delay: 0 });
+    app = start(document, fakeWin(PERF), { frame: now, delay: 0, settle: 0, patience: 15 });
     await wait(20);
     app.toggle();
     expect(app.enabled).toBe(false);
@@ -62,7 +62,7 @@ describe('start', () => {
   it('remembers the metric chosen for the strip', async () => {
     buildPage();
     const storage = memoryStorage({ metric: 'IMPRESSIONS' });
-    app = start(document, fakeWin(PERF), { storage, frame: now, delay: 0 });
+    app = start(document, fakeWin(PERF), { storage, frame: now, delay: 0, settle: 0, patience: 15 });
     await wait(20);
     const select = document.querySelector('[data-scpc="strip"] select');
     expect(select.value).toBe('IMPRESSIONS');
@@ -75,7 +75,7 @@ describe('start', () => {
   it('waits for the person to stop hovering the chart before it reads the days', async () => {
     const { host } = buildPage();
     Object.defineProperty(host, 'matches', { configurable: true, value: sel => sel === ':hover' || Element.prototype.matches.call(host, sel) });
-    app = start(document, fakeWin(PERF), { frame: now, delay: 0 });
+    app = start(document, fakeWin(PERF), { frame: now, delay: 0, settle: 0, patience: 15 });
     await wait(20);
     expect(document.querySelector('[data-scpc="strip"]').getAttribute('aria-busy')).toBe('true');
     expect(document.querySelectorAll('[data-scpc="strip"] rect')).toHaveLength(0);
@@ -93,7 +93,7 @@ describe('start, fixes', () => {
     const { host } = buildPage();
     let n = 0;
     const frame = async () => { if (++n === 2) hovering(host, true); };
-    app = start(document, fakeWin(PERF), { frame, delay: 0 });
+    app = start(document, fakeWin(PERF), { frame, delay: 0, settle: 0, patience: 15 });
     await wait(30);
     expect(document.querySelector('[data-scpc="strip"]').getAttribute('aria-busy')).toBe('true');
     expect(document.querySelectorAll('[data-scpc="strip"] rect')).toHaveLength(0);
@@ -108,7 +108,7 @@ describe('start, fixes', () => {
     buildPage();
     let n = 0;
     const frame = async () => { if (++n === 1) throw new Error('boom'); };
-    app = start(document, fakeWin(PERF), { frame, delay: 0 });
+    app = start(document, fakeWin(PERF), { frame, delay: 0, settle: 0, patience: 15 });
     await wait(20);
     expect(spy).toHaveBeenCalled();
     document.querySelectorAll('[data-scpc="pill"]').forEach(p => p.remove());
@@ -128,7 +128,7 @@ describe('start, fixes', () => {
         await wait(10);
       }
     };
-    app = start(document, fakeWin(PERF), { frame, delay: 0 });
+    app = start(document, fakeWin(PERF), { frame, delay: 0, settle: 0, patience: 15 });
     await wait(80);
     expect(document.querySelectorAll('[data-scpc="pill"]').length).toBe(12);
   });
@@ -137,14 +137,14 @@ describe('start, fixes', () => {
     buildPage();
     let n = 0;
     const frame = async () => { if (++n === 2) app.stop(); };
-    app = start(document, fakeWin(PERF), { frame, delay: 0 });
+    app = start(document, fakeWin(PERF), { frame, delay: 0, settle: 0, patience: 15 });
     await wait(30);
     expect(document.querySelector('[data-scpc]')).toBeNull();
   });
 
   it('keeps the same strip when something unrelated changes', async () => {
     buildPage();
-    app = start(document, fakeWin(PERF), { frame: now, delay: 0 });
+    app = start(document, fakeWin(PERF), { frame: now, delay: 0, settle: 0, patience: 15 });
     await wait(20);
     const select = document.querySelector('[data-scpc="strip"] select');
     document.body.append(document.createElement('div'));
@@ -156,7 +156,7 @@ describe('start, fixes', () => {
     const { svg } = buildPage();
     let n = 0;
     const frame = async () => { n++; svg.querySelector('path').setAttribute('d', `M0,0L${n},${n}`); };
-    app = start(document, fakeWin(PERF), { frame, delay: 0 });
+    app = start(document, fakeWin(PERF), { frame, delay: 0, settle: 0, patience: 15 });
     await wait(150);
     expect(n).toBeLessThanOrEqual(4);
     expect(n).toBeGreaterThan(0);
@@ -165,14 +165,14 @@ describe('start, fixes', () => {
   it('applies a metric that storage returns late', async () => {
     buildPage();
     const storage = { async get() { await wait(30); return { metric: 'IMPRESSIONS' }; }, async set() {} };
-    app = start(document, fakeWin(PERF), { storage, frame: now, delay: 0 });
+    app = start(document, fakeWin(PERF), { storage, frame: now, delay: 0, settle: 0, patience: 15 });
     await wait(100);
     expect(document.querySelector('[data-scpc="strip"] select').value).toBe('IMPRESSIONS');
   });
 
   it('removes only the strip when the chart goes away but the table stays', async () => {
     const { host } = buildPage();
-    app = start(document, fakeWin(PERF), { frame: now, delay: 0 });
+    app = start(document, fakeWin(PERF), { frame: now, delay: 0, settle: 0, patience: 15 });
     await wait(20);
     host.remove();
     await wait(20);
@@ -190,7 +190,7 @@ describe('start, cache and loading', () => {
   it('does not read the days again when a drawn metric is unchecked, and still offers it', async () => {
     buildPage();
     const { calls, frame } = counting();
-    app = start(document, fakeWin(PERF), { frame, delay: 0 });
+    app = start(document, fakeWin(PERF), { frame, delay: 0, settle: 0, patience: 15 });
     await wait(30);
     expect(calls.n).toBe(3);
     buildPage({ drawn: ['CLICKS'] });
@@ -205,7 +205,7 @@ describe('start, cache and loading', () => {
   it('reads again for a metric that was never read, and merges it', async () => {
     buildPage({ drawn: ['CLICKS'] });
     const { calls, frame } = counting();
-    app = start(document, fakeWin(PERF), { frame, delay: 0 });
+    app = start(document, fakeWin(PERF), { frame, delay: 0, settle: 0, patience: 15 });
     await wait(30);
     expect(calls.n).toBe(3);
     buildPage({ drawn: ['CLICKS', 'IMPRESSIONS'] });
@@ -221,7 +221,7 @@ describe('start, cache and loading', () => {
     buildPage();
     const { calls, frame } = counting();
     const win = fakeWin(PERF);
-    app = start(document, win, { frame, delay: 0 });
+    app = start(document, win, { frame, delay: 0, settle: 0, patience: 15 });
     await wait(30);
     expect(calls.n).toBe(3);
     win.location = new URL('https://search.google.com/search-console/performance/search-analytics?compare_date=PREV&metrics=CLICKS&resource_id=x');
@@ -236,7 +236,7 @@ describe('start, cache and loading', () => {
 
   it('shows a loading state, with no bars from the previous key, while the days are read', async () => {
     buildPage();
-    app = start(document, fakeWin(PERF), { frame: now, delay: 0 });
+    app = start(document, fakeWin(PERF), { frame: now, delay: 0, settle: 0, patience: 15 });
     await wait(30);
     expect(document.querySelectorAll('[data-scpc="strip"] rect[data-scpc-tone]')).toHaveLength(3);
     let release;
@@ -244,7 +244,7 @@ describe('start, cache and loading', () => {
     app.stop();
     buildPage();
     const win = fakeWin(`${PERF}&query=abc`);
-    app = start(document, win, { frame: () => gate, delay: 0 });
+    app = start(document, win, { frame: () => gate, delay: 0, settle: 0, patience: 15 });
     await wait(30);
     const strip = document.querySelector('[data-scpc="strip"]');
     expect(strip.getAttribute('aria-busy')).toBe('true');
@@ -257,16 +257,18 @@ describe('start, cache and loading', () => {
     expect(document.querySelectorAll('[data-scpc="strip"] rect[data-scpc-tone]')).toHaveLength(3);
   });
 
-  it('repaints when the chart is resized, because the bars move', async () => {
+  it('repaints without reading again when only the x positions change', async () => {
     const { svg } = buildPage();
-    app = start(document, fakeWin(PERF), { frame: now, delay: 0 });
+    const { calls, frame } = counting();
+    app = start(document, fakeWin(PERF), { frame, delay: 0, settle: 0, patience: 15 });
     await wait(30);
     const first = document.querySelector('[data-scpc="strip"] svg');
-    expect(first.getAttribute('width')).toBe('751');
+    expect(calls.n).toBe(3);
     svg.setAttribute('width', '600');
-    svg.querySelectorAll('path[stroke-dasharray="null"]').forEach(path => path.setAttribute('d', 'M12,50L30,51L50,52'));
-    await wait(30);
+    svg.querySelectorAll('path[stroke]').forEach(path => path.setAttribute('d', path.getAttribute('d').replace(/([ML])([\d.]+),/g, (m, c, x) => `${c}${Number(x) * 0.8},`)));
+    await wait(40);
     expect(document.querySelector('[data-scpc="strip"] svg')).not.toBe(first);
+    expect(calls.n).toBe(3);
   });
 
   // Same dates and count, different numbers: what a new filter's data looks like.
@@ -282,7 +284,7 @@ describe('start, cache and loading', () => {
     buildPage();
     const g = gated();
     const win = fakeWin(PERF);
-    app = start(document, win, { frame: g.frame, delay: 0 });
+    app = start(document, win, { frame: g.frame, delay: 0, settle: 0, patience: 15 });
     await wait(30);
     expect(tones()).toEqual(['worse', 'better', 'new']);
     win.location = new URL(`${PERF}&query=abc`);
@@ -301,7 +303,7 @@ describe('start, cache and loading', () => {
 
   it('never keeps the old bars when the data changes under the same URL', async () => {
     buildPage();
-    app = start(document, fakeWin(PERF), { frame: now, delay: 0 });
+    app = start(document, fakeWin(PERF), { frame: now, delay: 0, settle: 0, patience: 15 });
     await wait(30);
     buildPage({ days: NEW });
     await wait(30);
@@ -312,7 +314,7 @@ describe('start, cache and loading', () => {
     buildPage();
     const g = gated();
     const win = fakeWin(PERF);
-    app = start(document, win, { frame: g.frame, delay: 0 });
+    app = start(document, win, { frame: g.frame, delay: 0, settle: 0, patience: 15 });
     await wait(30);
     g.hold();
     win.location = new URL(`${PERF}&query=abc`);
@@ -330,7 +332,7 @@ describe('start, cache and loading', () => {
     const g = gated();
     g.hold();
     const win = fakeWin(PERF);
-    app = start(document, win, { frame: g.frame, delay: 0 });
+    app = start(document, win, { frame: g.frame, delay: 0, settle: 0, patience: 15 });
     await wait(30);
     win.location = new URL(`${PERF}&query=abc`);
     buildPage({ days: NEW });
@@ -343,7 +345,7 @@ describe('start, cache and loading', () => {
     buildPage();
     const { calls, frame } = counting();
     const win = fakeWin(`${PERF}&breakdown=query`);
-    app = start(document, win, { frame, delay: 0 });
+    app = start(document, win, { frame, delay: 0, settle: 0, patience: 15 });
     await wait(30);
     win.location = new URL('https://search.google.com/search-console/performance/search-analytics?compare_date=PREV&breakdown=page&resource_id=x');
     document.body.append(document.createElement('div'));
@@ -353,7 +355,7 @@ describe('start, cache and loading', () => {
 
   it('keeps focus on the select after choosing a metric', async () => {
     buildPage();
-    app = start(document, fakeWin(PERF), { frame: now, delay: 0 });
+    app = start(document, fakeWin(PERF), { frame: now, delay: 0, settle: 0, patience: 15 });
     await wait(30);
     const select = document.querySelector('[data-scpc="strip"] select');
     select.focus();
@@ -371,8 +373,65 @@ describe('start, cache and loading', () => {
     const old = host.closest('.chart-card').cloneNode(true);
     old.querySelectorAll('path[stroke]').forEach(p => p.setAttribute('d', 'M1,1L2,2L3,3L4,4L5,5'));
     document.body.prepend(old);
-    app = start(document, fakeWin(PERF), { frame: now, delay: 0 });
+    app = start(document, fakeWin(PERF), { frame: now, delay: 0, settle: 0, patience: 15 });
     await wait(30);
     expect(tones()).toEqual(['worse', 'better', 'new']);
+  });
+
+  it('does not re-read while Google animates the remaining lines after a toggle', async () => {
+    buildPage();
+    const { calls, frame } = counting();
+    app = start(document, fakeWin(PERF), { frame, delay: 0, settle: 50, patience: 15 });
+    await wait(150);
+    expect(calls.n).toBe(3);
+    buildPage({ drawn: ['CLICKS'] });
+    const path = document.querySelector('path[stroke="#4285F4"][stroke-dasharray="null"]');
+    const truth = path.getAttribute('d');
+    const busy = [];
+    for (const dy of [90, 60, 30, 10, 0]) {
+      path.setAttribute('d', truth.replace(/,([\d.]+)/g, (m, y) => `,${Number(y) + dy}`));
+      await wait(15);
+      busy.push(document.querySelector('[data-scpc="strip"]')?.hasAttribute('aria-busy'));
+    }
+    await wait(150);
+    expect(busy.every(b => b === false)).toBe(true);
+    expect(calls.n).toBe(3);
+    expect([...document.querySelectorAll('[data-scpc="strip"] option')].map(o => o.value)).toEqual(['CLICKS', 'IMPRESSIONS']);
+    expect(document.querySelector('[data-scpc="strip"]').hasAttribute('aria-busy')).toBe(false);
+  });
+
+  it('waits for the new chart after a URL change, showing the loading state and reading nothing', async () => {
+    buildPage();
+    const { calls, frame } = counting();
+    const win = fakeWin(PERF);
+    app = start(document, win, { frame, delay: 0, settle: 20, patience: 5000 });
+    await wait(100);
+    expect(calls.n).toBe(3);
+    win.location = new URL(`${PERF}&query=abc`);
+    document.body.append(document.createElement('div'));
+    await wait(80);
+    expect(calls.n).toBe(3);
+    expect(document.querySelector('[data-scpc="strip"]').getAttribute('aria-busy')).toBe('true');
+    expect(tones()).toEqual([]);
+    buildPage({ days: NEW });
+    await wait(100);
+    expect(calls.n).toBe(6);
+    expect(tones()).toEqual(['better', 'worse', 'worse']);
+  });
+
+  it('stops retrying when the page keeps moving under the sweep', async () => {
+    buildPage();
+    const { svg } = { svg: document.querySelector('[role="application"] svg') };
+    let n = 0;
+    const win = fakeWin(PERF);
+    // The URL changes during every sweep, so what was read never belongs to the key it started with.
+    const frame = async () => { if (++n % 3 === 1) win.location = new URL(`${PERF}&query=q${n}`); };
+    app = start(document, win, { frame, delay: 0, settle: 0, patience: 5 });
+    await wait(300);
+    expect(n).toBeLessThanOrEqual(12);
+    const stable = n;
+    await wait(100);
+    expect(n).toBe(stable);
+    expect(svg).toBeTruthy();
   });
 });
