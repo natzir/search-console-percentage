@@ -58,4 +58,4 @@ Not affiliated with Google. Google and Google Search Console are trademarks of G
 
 **Data usage:** the extension collects none of the listed kinds of user data. Tick the three certifications (not sold to third parties, not used or transferred for purposes unrelated to the single purpose, not used to determine creditworthiness or for lending).
 
-**Privacy policy URL:** https://github.com/natzir/search-console-percentage/blob/main/PRIVACY.md
+**Privacy policy URL:** https://natzir.github.io/search-console-percentage/privacy.html
