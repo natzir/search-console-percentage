@@ -13,7 +13,7 @@ const ours = node => node.nodeType === 1 && (node.hasAttribute('data-scpc') || n
 // for it (the sweep reads it directly, and the wait for the pointer to leave listens to mouseleave).
 const tooltip = node => Boolean(node.closest?.('[aria-live]')?.closest('[role="application"]'));
 
-export function start(doc, win, { storage, frame, delay = 200, settle = 400, patience = 5000 } = {}) {
+export function start(doc, win, { storage, frame, budget, delay = 200, settle = 400, patience = 5000 } = {}) {
   let enabled = true;
   let timer = null;
   let sweeping = false;
@@ -108,7 +108,7 @@ export function start(doc, win, { storage, frame, delay = 200, settle = 400, pat
     const startSignature = chart.signature;
     let points;
     try {
-      points = await sweep(chart, l, { ...(frame ? { frame } : {}), abort });
+      points = await sweep(chart, l, { frame, budget, abort });
     } finally {
       sweeping = false;
       if (pending) {

@@ -53,13 +53,36 @@ describe('sweep', () => {
     expect(points[1].IMPRESSIONS).toMatchObject({ last: 1423, previous: 2792 });
   });
 
+  it('reads each point within its mousemove, as Google rewrites its tooltip there: no frame to wait for', async () => {
+    buildPage();
+    let frames = 0;
+    const points = await sweep(findChart(document), 'en', { frame: async () => { frames++; } });
+    expect(points?.map(p => p.CLICKS.date)).toEqual(DAYS.map(d => d.date));
+    expect(frames).toBe(0);
+  });
+
+  it('waits a frame for a point whose tooltip is rewritten after the mousemove', async () => {
+    buildPage({ late: true });
+    let frames = 0;
+    const points = await sweep(findChart(document), 'en', { frame: async () => { frames++; } });
+    expect(points?.map(p => p.CLICKS.date)).toEqual(DAYS.map(d => d.date));
+    expect(frames).toBe(DAYS.length);
+  });
+
+  it('yields to the page once a slice of the sweep has taken its budget', async () => {
+    buildPage();
+    let frames = 0;
+    await sweep(findChart(document), 'en', { frame: async () => { frames++; }, budget: 0 });
+    expect(frames).toBe(DAYS.length);
+  });
+
   it('gives up when the chart\'s data changes during the sweep', async () => {
     const { svg } = buildPage();
     let step = 0;
     const frame = async () => {
       if (++step === 2) svg.querySelector('path').setAttribute('d', 'M0,0L1,1');
     };
-    expect(await sweep(findChart(document), 'en', { frame })).toBeNull();
+    expect(await sweep(findChart(document), 'en', { frame, budget: 0 })).toBeNull();
   });
 
   it('gives up, and cleans up, when the caller aborts it', async () => {
@@ -67,7 +90,7 @@ describe('sweep', () => {
     let step = 0;
     const frame = async () => { step++; };
     const abort = () => step >= 2;
-    expect(await sweep(findChart(document), 'en', { frame, abort })).toBeNull();
+    expect(await sweep(findChart(document), 'en', { frame, abort, budget: 0 })).toBeNull();
     expect(step).toBe(2);
     expect(host.classList.contains('scpc-sweeping')).toBe(false);
   });
@@ -75,7 +98,7 @@ describe('sweep', () => {
   it('marks the chart while it sweeps, and clears the mark after', async () => {
     const { host } = buildPage();
     let marked = false;
-    await sweep(findChart(document), 'en', { frame: async () => { marked ||= host.classList.contains('scpc-sweeping'); } });
+    await sweep(findChart(document), 'en', { frame: async () => { marked ||= host.classList.contains('scpc-sweeping'); }, budget: 0 });
     expect(marked).toBe(true);
     expect(host.classList.contains('scpc-sweeping')).toBe(false);
   });
@@ -84,7 +107,7 @@ describe('sweep', () => {
     const { svg } = buildPage();
     let left = 0;
     svg.getBoundingClientRect = () => ({ left, top: 0, right: left + 751, bottom: 212, width: 751, height: 212, x: left, y: 0 });
-    const points = await sweep(findChart(document), 'en', { frame: async () => { left += 40; } });
+    const points = await sweep(findChart(document), 'en', { frame: async () => { left += 40; }, budget: 0 });
     expect(points?.map(p => p.CLICKS.date)).toEqual(DAYS.map(d => d.date));
   });
 

@@ -60,10 +60,13 @@ function hitTarget(doc, host, svg, x, y) {
 // Moves a synthetic mouse across the chart, point by point, and reads the tooltip each time. Returns
 // null if the chart's data changes during the sweep, if Google's tooltip didn't update for a point, if a
 // drawn metric got no number at any point (a tooltip it can't read), or if `abort()` turns true (checked
-// after each frame, before the point is read), so the caller can decide whether to run it again.
+// before each point is read), so the caller can decide whether to run it again.
 // Points past the days both periods have (a shorter previous period, as the last 3 months against the
 // previous 3) are left without values: Google's tooltip stays on the last day they share.
-export async function sweep(chart, lang, { frame = nextFrame, abort = () => false } = {}) {
+// Google rewrites its tooltip within the mousemove, so a point is read at once; one it hasn't rewritten
+// yet gets a frame. Every `budget` ms the sweep yields a frame to the page, so a long chart doesn't
+// freeze it.
+export async function sweep(chart, lang, { frame = nextFrame, abort = () => false, budget = 40 } = {}) {
   const { host, svg, plotX, plotY, xs, drawn, paired = xs.length } = chart;
   const doc = host.ownerDocument;
   const before = signature(svg);
@@ -75,6 +78,7 @@ export async function sweep(chart, lang, { frame = nextFrame, abort = () => fals
   const region = host.querySelector('[aria-live]');
   if (region) rewrites.observe(region, { subtree: true, childList: true, characterData: true });
   const points = [];
+  let slice = performance.now();
   try {
     for (const [i, x] of xs.slice(0, paired).entries()) {
       // Where the chart is now: the page can scroll or move during the sweep.
@@ -84,12 +88,19 @@ export async function sweep(chart, lang, { frame = nextFrame, abort = () => fals
       rewrites.takeRecords();
       rewritten = 0;
       hitTarget(doc, host, svg, clientX, clientY).dispatchEvent(mouse(doc, 'mousemove', { bubbles: true, clientX, clientY }));
-      await frame();
       rewritten += rewrites.takeRecords().length;
+      if (!rewritten) {
+        await frame();
+        rewritten += rewrites.takeRecords().length;
+      }
       if (abort()) return null;
       if (signature(svg) !== before) return null;
       if (i > 0 && !rewritten) return null;
       points.push(readPoint(liveLines(host), drawn, lang));
+      if (performance.now() - slice >= budget) {
+        await frame();
+        slice = performance.now();
+      }
     }
   } finally {
     rewrites.disconnect();

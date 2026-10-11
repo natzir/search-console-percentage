@@ -43,7 +43,8 @@ const visible = el => {
 
 // previousDays: how many of the days the previous period has, when it is shorter than the current one.
 // dots: Google's dotted copy of each line (stroke-dasharray 0, 8), as in the 24-hour view.
-export function buildPage({ lang = EN, metrics = ORDER, drawn = ['CLICKS', 'IMPRESSIONS'], compare = true, totals = TOTALS, rows = ROWS, days = DAYS, previousDays = days.length, dots = false } = {}) {
+// late: the tooltip is rewritten after the mousemove instead of within it.
+export function buildPage({ lang = EN, metrics = ORDER, drawn = ['CLICKS', 'IMPRESSIONS'], compare = true, totals = TOTALS, rows = ROWS, days = DAYS, previousDays = days.length, dots = false, late = false } = {}) {
   const doc = document;
   doc.documentElement.lang = lang.lang;
   const cards = metrics.map((key, i) => {
@@ -116,7 +117,9 @@ export function buildPage({ lang = EN, metrics = ORDER, drawn = ['CLICKS', 'IMPR
       out.push(`<div>. ${lang.names[key]}: ${day.date}\n : ${show(key, day[key][0], lang.lang)} ,</div>`);
       out.push(`<div>. ${lang.names[key]}: ${day.prev}\n : ${show(key, day[key][1], lang.lang)} ,</div>`);
     }
-    host.querySelector('[aria-live] > span').innerHTML = out.join('');
+    const write = () => (host.querySelector('[aria-live] > span').innerHTML = out.join(''));
+    if (late) queueMicrotask(write);
+    else write();
   });
   return { doc, host, svg, xs };
 }
