@@ -62,6 +62,10 @@ export function findCards(doc, lang) {
 
 export const pathXs = d => (String(d).match(/[ML]\s*-?[\d.]+/g) ?? []).map(s => Number(s.slice(1)));
 
+// A line of the previous period: dashed ("4, 4"). A dash of 0 ("0, 8") only lays dots over a line of the
+// current period, as Google does in the 24-hour view.
+const isPrevious = path => Number((path.getAttribute('stroke-dasharray') ?? '').match(/[\d.]+/)?.[0] ?? 0) > 0;
+
 // Each drawn metric's y-coordinates, solid and dashed lines: they change when the numbers change, not
 // when other metrics are toggled.
 export const pathYs = d => [...String(d).matchAll(/[ML]\s*-?[\d.]+[\s,]+(-?[\d.]+)/g)].map(m => m[1]).join(',');
@@ -70,7 +74,7 @@ export function fingerprints(svg) {
   for (const path of svg.querySelectorAll('path[stroke]')) {
     const key = STROKES[path.getAttribute('stroke').toLowerCase()];
     if (!key) continue;
-    const dashed = /\d/.test(path.getAttribute('stroke-dasharray') ?? '');
+    const dashed = isPrevious(path);
     (parts[key] ??= []).push(`${dashed ? 'D' : 'S'}${pathYs(path.getAttribute('d'))}`);
   }
   return Object.fromEntries(Object.entries(parts).map(([key, list]) => [key, list.sort().join(';')]));
@@ -96,7 +100,7 @@ export function findChart(doc) {
     for (const path of svg.querySelectorAll('path[stroke]')) {
       const key = STROKES[path.getAttribute('stroke').toLowerCase()];
       if (!key) continue;
-      if (/\d/.test(path.getAttribute('stroke-dasharray') ?? '')) {
+      if (isPrevious(path)) {
         compare = true;
         previous ??= pathXs(path.getAttribute('d')).length;
         continue;

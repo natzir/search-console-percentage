@@ -57,10 +57,6 @@ function hitTarget(doc, host, svg, x, y) {
   return holds.at(-1) ?? svg;
 }
 
-// The same two dates as the point read before: the tooltip didn't move on. One date alone can repeat
-// when the periods differ in length.
-const repeats = (point, before, key) => point[key].date === before[key].date && point[key].previousDate === before[key].previousDate;
-
 // Moves a synthetic mouse across the chart, point by point, and reads the tooltip each time. Returns
 // null if the chart's data changes during the sweep, if Google's tooltip didn't update for a point, if a
 // drawn metric got no number at any point (a tooltip it can't read), or if `abort()` turns true (checked
@@ -72,24 +68,31 @@ export async function sweep(chart, lang, { frame = nextFrame, abort = () => fals
   const doc = host.ownerDocument;
   const before = signature(svg);
   host.classList.add('scpc-sweeping');
+  // Google rewrites its tooltip each time it moves to another point, even when the text comes out the
+  // same (the hours of one day share their dates): left untouched, it is still on the point before.
+  let rewritten = 0;
+  const rewrites = new MutationObserver(records => (rewritten += records.length));
+  const region = host.querySelector('[aria-live]');
+  if (region) rewrites.observe(region, { subtree: true, childList: true, characterData: true });
   const points = [];
-  let read = null; // the last point read
   try {
-    for (const x of xs.slice(0, paired)) {
+    for (const [i, x] of xs.slice(0, paired).entries()) {
       // Where the chart is now: the page can scroll or move during the sweep.
       const rect = svg.getBoundingClientRect();
       const clientX = rect.left + plotX + x;
       const clientY = rect.top + plotY + 20;
+      rewrites.takeRecords();
+      rewritten = 0;
       hitTarget(doc, host, svg, clientX, clientY).dispatchEvent(mouse(doc, 'mousemove', { bubbles: true, clientX, clientY }));
       await frame();
+      rewritten += rewrites.takeRecords().length;
       if (abort()) return null;
       if (signature(svg) !== before) return null;
-      const point = readPoint(liveLines(host), drawn, lang);
-      if (point && read && repeats(point, read, drawn[0])) return null;
-      read = point ?? read;
-      points.push(point);
+      if (i > 0 && !rewritten) return null;
+      points.push(readPoint(liveLines(host), drawn, lang));
     }
   } finally {
+    rewrites.disconnect();
     svg.dispatchEvent(mouse(doc, 'mouseout', { bubbles: true }));
     svg.dispatchEvent(mouse(doc, 'mouseleave', {}));
     host.classList.remove('scpc-sweeping');

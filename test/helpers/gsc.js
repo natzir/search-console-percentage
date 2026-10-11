@@ -42,7 +42,8 @@ const visible = el => {
 };
 
 // previousDays: how many of the days the previous period has, when it is shorter than the current one.
-export function buildPage({ lang = EN, metrics = ORDER, drawn = ['CLICKS', 'IMPRESSIONS'], compare = true, totals = TOTALS, rows = ROWS, days = DAYS, previousDays = days.length } = {}) {
+// dots: Google's dotted copy of each line (stroke-dasharray 0, 8), as in the 24-hour view.
+export function buildPage({ lang = EN, metrics = ORDER, drawn = ['CLICKS', 'IMPRESSIONS'], compare = true, totals = TOTALS, rows = ROWS, days = DAYS, previousDays = days.length, dots = false } = {}) {
   const doc = document;
   doc.documentElement.lang = lang.lang;
   const cards = metrics.map((key, i) => {
@@ -72,7 +73,8 @@ export function buildPage({ lang = EN, metrics = ORDER, drawn = ['CLICKS', 'IMPR
   const xs = days.map((_, i) => 12 + i * 24.6);
   // y follows the data, as in Google's chart, so a chart with other numbers has other coordinates.
   const path = (key, dashed) => `<path stroke="${STROKES[key]}" stroke-dasharray="${dashed ? '4, 4' : 'null'}" d="${xs.slice(0, dashed ? previousDays : xs.length).map((x, i) => `${i ? 'L' : 'M'}${x},${150 - Math.min(days[i][key][dashed ? 1 : 0], 20) * 5 + i}`).join('')}"></path><path stroke="transparent" d="M0,0"></path>`;
-  const lines = [...drawn].reverse().map(key => (compare ? path(key, true) : '') + path(key, false)).join('');
+  const dotted = key => path(key, false).replace('stroke-dasharray="null"', 'stroke-dasharray="0, 8"');
+  const lines = [...drawn].reverse().map(key => (compare ? path(key, true) : '') + path(key, false) + (dots ? dotted(key) : '')).join('');
 
   doc.body.innerHTML = `
     <div class="cards">${cards}</div>
@@ -99,10 +101,15 @@ export function buildPage({ lang = EN, metrics = ORDER, drawn = ['CLICKS', 'IMPR
     const r = svg.getBoundingClientRect();
     return { left: r.left + 26, top: r.top + 10, right: r.left + 26 + 725, bottom: r.top + 10 + 192, width: 725, height: 192, x: r.left + 26, y: r.top + 10 };
   };
+  // Google rewrites the tooltip only when it moves to another point.
+  let shown = null;
+  svg.addEventListener('mouseout', () => (shown = null));
   overlay.addEventListener('mousemove', event => {
     const x = event.clientX - svg.getBoundingClientRect().left - 26;
     // Past the last day of a shorter previous period, Google's tooltip stays on that day.
     const i = Math.min(xs.reduce((best, v, j) => (Math.abs(v - x) < Math.abs(xs[best] - x) ? j : best), 0), previousDays - 1);
+    if (i === shown) return;
+    shown = i;
     const day = days[i];
     const out = [`<div>Day ${i + 1}</div>`];
     for (const key of ORDER.filter(k => drawn.includes(k))) {

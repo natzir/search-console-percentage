@@ -117,6 +117,13 @@ describe('sweep', () => {
     expect(points?.map(p => p.CLICKS.date)).toEqual(DAYS.map(day => day.date));
   });
 
+  it('reads on when both dates repeat, as the hours of one day do: Google rewrites its tooltip for every point', async () => {
+    const days = DAYS.map(day => ({ ...day, date: DAYS[0].date, prev: DAYS[0].prev }));
+    buildPage({ days });
+    const points = await sweep(findChart(document), 'en', { frame: now });
+    expect(points?.map(p => p.CLICKS.last)).toEqual(DAYS.map(day => day.CLICKS[0]));
+  });
+
   it('reads the days both periods have when the current one is longer, and leaves the rest without a point', async () => {
     // As comparing the last 3 months with the previous period: 92 days against 91.
     buildPage({ previousDays: 2 });

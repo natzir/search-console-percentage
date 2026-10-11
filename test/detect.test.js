@@ -86,6 +86,13 @@ describe('findChart', () => {
     expect(findChart(document).paired).toBe(3);
   });
 
+  it('does not take the dots Google lays over each line, as in the 24-hour view, for the previous period', () => {
+    buildPage({ compare: false, dots: true });
+    expect(findChart(document).compare).toBe(false);
+    buildPage({ dots: true });
+    expect(findChart(document)).toMatchObject({ compare: true, paired: 3, drawn: ['CLICKS', 'IMPRESSIONS'] });
+  });
+
   it('knows when the chart is not comparing', () => {
     buildPage({ compare: false });
     expect(findChart(document).compare).toBe(false);
