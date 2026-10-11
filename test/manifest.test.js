@@ -21,7 +21,7 @@ describe('manifest', () => {
   it('has the store name, a description that fits and the package\'s version', () => {
     expect(manifest.name).toBe('Search Console Percentage Calculator by Natzir');
     expect(manifest.description.length).toBeLessThanOrEqual(132);
-    expect(manifest.version).toBe('1.0.0');
+    expect(manifest.version).toBe('1.0.1');
     expect(pkg.version).toBe(manifest.version);
   });
 
