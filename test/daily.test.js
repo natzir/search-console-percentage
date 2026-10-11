@@ -76,6 +76,14 @@ describe('sweep', () => {
     expect(frames).toBe(DAYS.length);
   });
 
+  it('puts Google\'s tooltip back where the pointer is when the person is on the chart', async () => {
+    const { host, xs } = buildPage();
+    Object.defineProperty(host, 'matches', { configurable: true, value: sel => sel === ':hover' || Element.prototype.matches.call(host, sel) });
+    // jsdom has no layout: the svg is at 0,0 and the plot starts at 26,10.
+    await sweep(findChart(document), 'en', { frame: now, pointer: () => ({ clientX: 26 + xs[1], clientY: 40 }) });
+    expect(liveLines(host).join(' ')).toContain(DAYS[1].date);
+  });
+
   it('gives up when the chart\'s data changes during the sweep', async () => {
     const { svg } = buildPage();
     let step = 0;

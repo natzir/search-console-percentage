@@ -9,6 +9,7 @@ const now = () => Promise.resolve();
 const fakeWin = href => ({ location: new URL(href), getComputedStyle: window.getComputedStyle.bind(window) });
 const memoryStorage = (data = {}) => ({ data, async get(key) { return key in data ? { [key]: data[key] } : {}; }, async set(items) { Object.assign(data, items); } });
 let app;
+const hovering = (host, on) => Object.defineProperty(host, 'matches', { configurable: true, value: sel => (on && sel === ':hover') || Element.prototype.matches.call(host, sel) });
 
 afterEach(() => {
   app?.stop();
@@ -91,35 +92,25 @@ describe('start', () => {
     }
   });
 
-  it('waits for the person to stop hovering the chart before it reads the days', async () => {
+  it('reads the days with the pointer on the chart, without waiting for it to leave', async () => {
     const { host } = buildPage();
-    Object.defineProperty(host, 'matches', { configurable: true, value: sel => sel === ':hover' || Element.prototype.matches.call(host, sel) });
+    hovering(host, true);
     app = start(document, fakeWin(PERF), { frame: now, delay: 0, settle: 0, budget: 0, patience: 15 });
-    await wait(20);
-    expect(document.querySelector('[data-scpc="strip"]').getAttribute('aria-busy')).toBe('true');
-    expect(document.querySelectorAll('[data-scpc="strip"] rect')).toHaveLength(0);
-    Object.defineProperty(host, 'matches', { configurable: true, value: sel => Element.prototype.matches.call(host, sel) });
-    host.dispatchEvent(new MouseEvent('mouseleave'));
-    await wait(20);
-    expect(document.querySelector('[data-scpc="strip"]')).not.toBeNull();
+    await wait(30);
+    expect(document.querySelector('[data-scpc="strip"]').hasAttribute('aria-busy')).toBe(false);
+    expect(document.querySelectorAll('[data-scpc="strip"] rect[data-scpc-tone]')).toHaveLength(3);
   });
 });
 
-const hovering = (host, on) => Object.defineProperty(host, 'matches', { configurable: true, value: sel => (on && sel === ':hover') || Element.prototype.matches.call(host, sel) });
-
 describe('start, fixes', () => {
-  it('stops a sweep when the pointer arrives mid-way, and resumes after mouseleave', async () => {
+  it('goes on reading when the pointer arrives mid-way, instead of starting again', async () => {
     const { host } = buildPage();
     let n = 0;
     const frame = async () => { if (++n === 2) hovering(host, true); };
     app = start(document, fakeWin(PERF), { frame, delay: 0, settle: 0, budget: 0, patience: 15 });
     await wait(30);
-    expect(document.querySelector('[data-scpc="strip"]').getAttribute('aria-busy')).toBe('true');
-    expect(document.querySelectorAll('[data-scpc="strip"] rect')).toHaveLength(0);
-    hovering(host, false);
-    host.dispatchEvent(new MouseEvent('mouseleave'));
-    await wait(30);
-    expect(document.querySelector('[data-scpc="strip"]')).not.toBeNull();
+    expect(document.querySelectorAll('[data-scpc="strip"] rect[data-scpc-tone]')).toHaveLength(3);
+    expect(n).toBe(3); // one sweep: a frame after each of the 3 points
   });
 
   it('survives a throw inside the sweep', async () => {

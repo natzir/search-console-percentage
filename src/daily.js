@@ -65,8 +65,9 @@ function hitTarget(doc, host, svg, x, y) {
 // previous 3) are left without values: Google's tooltip stays on the last day they share.
 // Google rewrites its tooltip within the mousemove, so a point is read at once; one it hasn't rewritten
 // yet gets a frame. Every `budget` ms the sweep yields a frame to the page, so a long chart doesn't
-// freeze it.
-export async function sweep(chart, lang, { frame = nextFrame, abort = () => false, budget = 40 } = {}) {
+// freeze it. When the person's pointer is on the chart, `pointer()` (where it last moved) is where
+// Google's tooltip goes back to after.
+export async function sweep(chart, lang, { frame = nextFrame, abort = () => false, budget = 40, pointer = () => null } = {}) {
   const { host, svg, plotX, plotY, xs, drawn, paired = xs.length } = chart;
   const doc = host.ownerDocument;
   const before = signature(svg);
@@ -104,8 +105,13 @@ export async function sweep(chart, lang, { frame = nextFrame, abort = () => fals
     }
   } finally {
     rewrites.disconnect();
-    svg.dispatchEvent(mouse(doc, 'mouseout', { bubbles: true }));
-    svg.dispatchEvent(mouse(doc, 'mouseleave', {}));
+    const at = host.matches(':hover') ? pointer() : null;
+    if (at) {
+      hitTarget(doc, host, svg, at.clientX, at.clientY).dispatchEvent(mouse(doc, 'mousemove', { bubbles: true, clientX: at.clientX, clientY: at.clientY }));
+    } else {
+      svg.dispatchEvent(mouse(doc, 'mouseout', { bubbles: true }));
+      svg.dispatchEvent(mouse(doc, 'mouseleave', {}));
+    }
     host.classList.remove('scpc-sweeping');
   }
   while (points.length < xs.length) points.push(null);

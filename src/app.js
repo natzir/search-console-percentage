@@ -27,7 +27,12 @@ export function start(doc, win, { storage, frame, budget, delay = 200, settle = 
   let fails = 0; // consecutive sweeps the chart changed under
   let blocked = null; // signature we stopped retrying on
   let chosen = null;
-  let waitingForLeave = null;
+  // Where the person's pointer last moved, so a sweep can put Google's tooltip back there.
+  let pointer = null;
+  const track = event => {
+    if (event.isTrusted) pointer = { clientX: event.clientX, clientY: event.clientY };
+  };
+  doc.addEventListener('mousemove', track, { capture: true, passive: true });
   const lang = () => doc.documentElement.lang || 'en';
 
   storage?.get('metric').then(v => { chosen = v?.metric ?? null; schedule(); }).catch(() => {});
@@ -90,17 +95,11 @@ export function start(doc, win, { storage, frame, budget, delay = 200, settle = 
   };
 
   const readDays = async (chart, l) => {
-    // Never fight the person over Google's tooltip: wait until the pointer leaves the chart.
-    if (chart.host.matches(':hover')) {
-      if (waitingForLeave !== chart.host) {
-        waitingForLeave = chart.host;
-        chart.host.addEventListener('mouseleave', () => { waitingForLeave = null; schedule(); }, { once: true });
-      }
-      return;
-    }
+    // The pointer may stay on the chart: each point is moved to and read at once, so it can't get in
+    // between, and the sweep puts Google's tooltip back where the pointer is.
     let aborted = false;
     const abort = () => {
-      aborted = stopped || !enabled || chart.host.matches(':hover');
+      aborted = stopped || !enabled;
       return aborted;
     };
     sweeping = true;
@@ -108,7 +107,7 @@ export function start(doc, win, { storage, frame, budget, delay = 200, settle = 
     const startSignature = chart.signature;
     let points;
     try {
-      points = await sweep(chart, l, { frame, budget, abort });
+      points = await sweep(chart, l, { frame, budget, abort, pointer: () => pointer });
     } finally {
       sweeping = false;
       if (pending) {
@@ -235,6 +234,7 @@ export function start(doc, win, { storage, frame, budget, delay = 200, settle = 
       stopped = true;
       enabled = false;
       observer.disconnect();
+      doc.removeEventListener('mousemove', track, { capture: true });
       clearTimeout(timer);
       timer = null;
       clear();
