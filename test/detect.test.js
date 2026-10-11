@@ -79,6 +79,13 @@ describe('findChart', () => {
     expect(chart.xs).toEqual(xs);
   });
 
+  it('counts the points both periods have: the dashed line is shorter when the previous period is', () => {
+    buildPage({ previousDays: 2 });
+    expect(findChart(document)).toMatchObject({ compare: true, paired: 2 });
+    buildPage();
+    expect(findChart(document).paired).toBe(3);
+  });
+
   it('knows when the chart is not comparing', () => {
     buildPage({ compare: false });
     expect(findChart(document).compare).toBe(false);

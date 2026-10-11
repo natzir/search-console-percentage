@@ -117,6 +117,13 @@ describe('sweep', () => {
     expect(points?.map(p => p.CLICKS.date)).toEqual(DAYS.map(day => day.date));
   });
 
+  it('reads the days both periods have when the current one is longer, and leaves the rest without a point', async () => {
+    // As comparing the last 3 months with the previous period: 92 days against 91.
+    buildPage({ previousDays: 2 });
+    const points = await sweep(findChart(document), 'en', { frame: now });
+    expect(points?.map(p => p?.CLICKS.date ?? null)).toEqual([DAYS[0].date, DAYS[1].date, null]);
+  });
+
   it('gives up when the tooltip is written in a way it can\'t read', async () => {
     const { host, svg } = buildPage();
     svg.addEventListener('mousemove', () => {

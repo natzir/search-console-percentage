@@ -80,7 +80,8 @@ export function fingerprints(svg) {
 export const signature = svg => [...svg.querySelectorAll('path[stroke]')].map(p => `${p.getAttribute('stroke')}:${p.getAttribute('d')}`).join('|');
 
 // Google's chart: the plot's offset in its SVG, each point's x, the metrics drawn (by line colour, in
-// the cards' order) and whether it compares (dashed lines are the previous period).
+// the cards' order), whether it compares (dashed lines are the previous period) and how many points
+// both periods have (paired: fewer than xs when the previous period is shorter).
 export function findChart(doc) {
   for (const host of doc.querySelectorAll('[role="application"]')) {
     if (!isVisible(host)) continue; // Google keeps earlier views' charts in the page, hidden
@@ -90,19 +91,22 @@ export function findChart(doc) {
     if (!offset) continue;
     const drawn = [];
     let xs = null;
+    let previous = null; // the previous period's points
     let compare = false;
     for (const path of svg.querySelectorAll('path[stroke]')) {
       const key = STROKES[path.getAttribute('stroke').toLowerCase()];
       if (!key) continue;
       if (/\d/.test(path.getAttribute('stroke-dasharray') ?? '')) {
         compare = true;
+        previous ??= pathXs(path.getAttribute('d')).length;
         continue;
       }
       if (!drawn.includes(key)) drawn.push(key);
       xs ??= pathXs(path.getAttribute('d'));
     }
     if (drawn.length && xs?.length) {
-      return { host, svg, plotX: Number(offset[1]), plotY: Number(offset[2]), xs, drawn: drawn.sort(byOrder), compare, signature: signature(svg), fingerprints: fingerprints(svg) };
+      const paired = Math.min(xs.length, previous ?? xs.length);
+      return { host, svg, plotX: Number(offset[1]), plotY: Number(offset[2]), xs, paired, drawn: drawn.sort(byOrder), compare, signature: signature(svg), fingerprints: fingerprints(svg) };
     }
   }
   return null;

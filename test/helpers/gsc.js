@@ -41,7 +41,8 @@ const visible = el => {
   return el;
 };
 
-export function buildPage({ lang = EN, metrics = ORDER, drawn = ['CLICKS', 'IMPRESSIONS'], compare = true, totals = TOTALS, rows = ROWS, days = DAYS } = {}) {
+// previousDays: how many of the days the previous period has, when it is shorter than the current one.
+export function buildPage({ lang = EN, metrics = ORDER, drawn = ['CLICKS', 'IMPRESSIONS'], compare = true, totals = TOTALS, rows = ROWS, days = DAYS, previousDays = days.length } = {}) {
   const doc = document;
   doc.documentElement.lang = lang.lang;
   const cards = metrics.map((key, i) => {
@@ -70,7 +71,7 @@ export function buildPage({ lang = EN, metrics = ORDER, drawn = ['CLICKS', 'IMPR
 
   const xs = days.map((_, i) => 12 + i * 24.6);
   // y follows the data, as in Google's chart, so a chart with other numbers has other coordinates.
-  const path = (key, dashed) => `<path stroke="${STROKES[key]}" stroke-dasharray="${dashed ? '4, 4' : 'null'}" d="${xs.map((x, i) => `${i ? 'L' : 'M'}${x},${150 - Math.min(days[i][key][dashed ? 1 : 0], 20) * 5 + i}`).join('')}"></path><path stroke="transparent" d="M0,0"></path>`;
+  const path = (key, dashed) => `<path stroke="${STROKES[key]}" stroke-dasharray="${dashed ? '4, 4' : 'null'}" d="${xs.slice(0, dashed ? previousDays : xs.length).map((x, i) => `${i ? 'L' : 'M'}${x},${150 - Math.min(days[i][key][dashed ? 1 : 0], 20) * 5 + i}`).join('')}"></path><path stroke="transparent" d="M0,0"></path>`;
   const lines = [...drawn].reverse().map(key => (compare ? path(key, true) : '') + path(key, false)).join('');
 
   doc.body.innerHTML = `
@@ -100,7 +101,8 @@ export function buildPage({ lang = EN, metrics = ORDER, drawn = ['CLICKS', 'IMPR
   };
   overlay.addEventListener('mousemove', event => {
     const x = event.clientX - svg.getBoundingClientRect().left - 26;
-    const i = xs.reduce((best, v, j) => (Math.abs(v - x) < Math.abs(xs[best] - x) ? j : best), 0);
+    // Past the last day of a shorter previous period, Google's tooltip stays on that day.
+    const i = Math.min(xs.reduce((best, v, j) => (Math.abs(v - x) < Math.abs(xs[best] - x) ? j : best), 0), previousDays - 1);
     const day = days[i];
     const out = [`<div>Day ${i + 1}</div>`];
     for (const key of ORDER.filter(k => drawn.includes(k))) {

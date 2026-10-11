@@ -65,15 +65,17 @@ const repeats = (point, before, key) => point[key].date === before[key].date && 
 // null if the chart's data changes during the sweep, if Google's tooltip didn't update for a point, if a
 // drawn metric got no number at any point (a tooltip it can't read), or if `abort()` turns true (checked
 // after each frame, before the point is read), so the caller can decide whether to run it again.
+// Points past the days both periods have (a shorter previous period, as the last 3 months against the
+// previous 3) are left without values: Google's tooltip stays on the last day they share.
 export async function sweep(chart, lang, { frame = nextFrame, abort = () => false } = {}) {
-  const { host, svg, plotX, plotY, xs, drawn } = chart;
+  const { host, svg, plotX, plotY, xs, drawn, paired = xs.length } = chart;
   const doc = host.ownerDocument;
   const before = signature(svg);
   host.classList.add('scpc-sweeping');
   const points = [];
   let read = null; // the last point read
   try {
-    for (const x of xs) {
+    for (const x of xs.slice(0, paired)) {
       // Where the chart is now: the page can scroll or move during the sweep.
       const rect = svg.getBoundingClientRect();
       const clientX = rect.left + plotX + x;
@@ -92,6 +94,7 @@ export async function sweep(chart, lang, { frame = nextFrame, abort = () => fals
     svg.dispatchEvent(mouse(doc, 'mouseleave', {}));
     host.classList.remove('scpc-sweeping');
   }
+  while (points.length < xs.length) points.push(null);
   const usable = key => points.some(p => Number.isFinite(p?.[key].last) && Number.isFinite(p?.[key].previous));
   return drawn.every(usable) ? points : null;
 }
